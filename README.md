@@ -59,9 +59,3 @@ verify_claim("George Walker Bush (born July 6, 1946) is an American politician a
 #Output: contradiction
 
 ---
-
-## **License**
-This project is for academic and research purposes. Please cite appropriately if reused.
-## **Author**
-Ruturaj Sujeet Jadhav
-ruturajjadhav5338@gmail.com
