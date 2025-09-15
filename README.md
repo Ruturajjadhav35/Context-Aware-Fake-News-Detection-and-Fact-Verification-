@@ -57,7 +57,10 @@ print(claims)
 from verify_mnli import verify_claim
 verify_claim("George Walker Bush (born July 6, 1946) is an American politician and businessman who was the 43rd president of the United States from 2001 to 2009. A member of the Republican Party and the eldest son of the 41st president, George H. W. Bush, he served as the 46th governor of Texas from 1995 to 2000.")
 #Output: contradiction
- ## **License**
+
+---
+
+## **License**
 This project is for academic and research purposes. Please cite appropriately if reused.
 ## **Author**
 Ruturaj Sujeet Jadhav
