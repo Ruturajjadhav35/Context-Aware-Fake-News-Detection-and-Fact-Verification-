@@ -855,10 +855,10 @@ const MODAL_CONTENT={
     <h3>How it works</h3>
     <p>When you submit an article, VeritAI runs a four-stage pipeline:</p>
     <ul>
-      <li>BERT classification - A fine-tuned BERT model trained on 44,898 articles predicts whether the article is fake or real based on linguistic patterns.</li>
-      <li>Claim extraction — spaCy identifies the most fact-checkable sentences using named entity recognition and verb scoring.</li>
+      <li>BERT classification:- A fine-tuned BERT model trained on 44,898 articles predicts whether the article is fake or real based on linguistic patterns.</li>
+      <li>Claim extraction:- spaCy identifies the most fact-checkable sentences using named entity recognition and verb scoring.</li>
       <li>Multi-source evidence retrieval — Each claim is queried against four trusted sources: Wikipedia, Google Fact Check, NewsAPI, and The Guardian.</li>
-      <li>NLI verification — RoBERTa-MNLI determines whether each evidence passage supports, refutes, or is neutral towards the claim.</li>
+      <li>NLI verification:- RoBERTa-MNLI determines whether each evidence passage supports, refutes, or is neutral towards the claim.</li>
     </ul>
     <h3>Why this approach</h3>
     <p>A single classifier can detect misinformation patterns but cannot verify specific factual claims. By combining classification with retrieval-augmented verification, VeritAI provides both a fast overall verdict and per-claim evidence linked to the original sources.</p>
