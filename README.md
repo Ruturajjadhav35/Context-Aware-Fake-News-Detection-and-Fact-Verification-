@@ -19,80 +19,152 @@ tags:
   - roberta
 ---
 
-# VeritAI — Fake News Detection & Fact Verification
+<div align="center">
 
-> An AI-powered pipeline that detects misinformation and verifies factual claims in news articles, cross-referencing Wikipedia, Google Fact Check, NewsAPI, and The Guardian.
+# VeritAI
+### Fake News Detection & Fact Verification
 
-[![Python](https://img.shields.io/badge/Python-3.12-blue)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green)](https://fastapi.tiangolo.com)
-[![BERT](https://img.shields.io/badge/BERT-fine--tuned-orange)](https://huggingface.co/bert-base-uncased)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+*Before you share it — let us check it.*
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-HuggingFace%20Spaces-yellow?style=for-the-badge&logo=huggingface)](https://ruturajjadhav35-veritai.hf.space)
+[![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)](LICENSE)
+
+</div>
+
+---
+
+## What is VeritAI?
+
+VeritAI is an AI-powered fact-checking tool that analyses news articles and tells you whether they hold up against what trusted sources actually report.
+
+Paste in any article — or drop a URL — and within seconds VeritAI will:
+
+- **Classify** the writing style as consistent with real or fabricated content
+- **Extract** the key factual claims worth checking
+- **Search** Reuters, BBC, Wikipedia, Google Fact Check, and The Guardian
+- **Verify** each claim against the evidence and give you a plain-English verdict
+
+Built as an MSc Artificial Intelligence dissertation at **Queen Mary University of London**.
+
+---
+
+## Live Demo
+
+🔗 **[Try VeritAI live →](https://ruturajjadhav35-veritai.hf.space)**
 
 ---
 
 ## How It Works
 
-VeritAI runs a **4-stage pipeline** on every article submitted:
+VeritAI runs a four-stage pipeline on every article submitted:
 
-| Stage | Model | What it does |
-|-------|-------|-------------|
-| ① Classification | BERT (fine-tuned) | Reads first 128 tokens, outputs fake/real verdict |
-| ② Claim extraction | spaCy NER | Scores sentences by fact-checkability, picks top 5 |
-| ③ Evidence retrieval | 4 APIs in parallel | Wikipedia · Google Fact Check · NewsAPI · Guardian |
-| ④ NLI verification | RoBERTa-MNLI | SUPPORTS / REFUTES / NEI verdict per claim |
+```
+Article input
+     │
+     ▼
+┌─────────────────────────────────┐
+│  Stage 1 — BERT Classification  │
+│  Reads writing style & framing  │
+│  Output: Fake / Real + confidence│
+└──────────────┬──────────────────┘
+               │
+               ▼
+┌─────────────────────────────────┐
+│  Stage 2 — spaCy Claim Extract  │
+│  Finds specific, testable facts │
+│  Output: Top 5 checkable claims │
+└──────────────┬──────────────────┘
+               │
+               ▼
+┌─────────────────────────────────┐
+│  Stage 3 — Evidence Retrieval   │
+│  Searches 4 source networks     │
+│  in parallel                    │
+└──────────────┬──────────────────┘
+               │
+               ▼
+┌─────────────────────────────────┐
+│  Stage 4 — RoBERTa-MNLI         │
+│  Reads claim + evidence together│
+│  Output: Supports/Refutes/NEI   │
+└─────────────────────────────────┘
+```
+
+### Evidence Sources & Weights
+
+| Source | Weight | What it covers |
+|--------|--------|----------------|
+| 🔍 Google Fact Check | 1.5× | PolitiFact, Snopes, Reuters FC, AP, FullFact |
+| 📰 NewsAPI | 1.3× | Reuters, BBC, AP, NYT, Bloomberg, Guardian, CNN |
+| 🛡️ The Guardian | 1.2× | Full Guardian article text via official API |
+| 📚 Wikipedia | 1.0× | Encyclopedic background and context |
+
+Final verdicts use **weighted majority voting** across all sources that returned evidence.
 
 ---
 
 ## Model Details
 
-- **Base model**: `bert-base-uncased` (12 layers, 768 hidden dims)
-- **Classifier head**: `Linear(768→512) → ReLU → Dropout(0.1) → Linear(512→2) → LogSoftmax`
-- **Training data**: ISOT Fake News Dataset — 44,898 articles (70/15/15 split)
-- **Sequence length**: 128 tokens
-- **Optimiser**: AdamW, lr=1e-5
-- **Accuracy**: 92% on held-out test set
-
----
-
-## Evidence Sources & Weights
-
-| Source | Weight | Coverage |
-|--------|--------|----------|
-| Google Fact Check | 1.5× | PolitiFact, Snopes, Reuters FC, AP, FullFact |
-| NewsAPI | 1.3× | Reuters, BBC, AP, NYT, Bloomberg, Guardian, CNN |
-| The Guardian | 1.2× | Full Guardian article text |
-| Wikipedia | 1.0× | Encyclopedic background context |
-
-Final verdict per claim is determined by **weighted majority voting** across all sources that returned evidence.
+| Component | Details |
+|-----------|---------|
+| **Base model** | `bert-base-uncased` |
+| **Architecture** | 12 transformer layers, 768 hidden dims |
+| **Classifier head** | Linear(768→512) → ReLU → Dropout(0.1) → Linear(512→2) |
+| **Training data** | ISOT Fake News Dataset — 44,898 articles |
+| **Train/Val/Test split** | 70 / 15 / 15 |
+| **Sequence length** | 128 tokens |
+| **Optimiser** | AdamW, lr=1e-5 |
+| **Test accuracy** | **92%** |
+| **NLI model** | `roberta-large-mnli` |
+| **Claim extractor** | `spaCy en_core_web_sm` |
 
 ---
 
 ## Confidence Tiers
 
-| Tier | Condition | UI |
-|------|-----------|----|
-| ✅ High confidence | BERT ≥ 85% + source agreement ≥ 60% | Green banner |
-| ⚠ Moderate confidence | BERT ≥ 65% + source agreement ≥ 40% | Amber banner |
-| ❓ Uncertain | BERT < 65% | Grey "Uncertain" banner |
+Rather than always giving a binary verdict, VeritAI is honest about uncertainty:
+
+| Tier | Condition | What it means |
+|------|-----------|---------------|
+| ✅ Strong signal | BERT ≥ 85% + source agreement ≥ 60% | High confidence verdict |
+| ⚠️ Moderate signal | BERT ≥ 65% + source agreement ≥ 40% | Treat with some caution |
+| ❓ Uncertain | BERT < 65% | Evidence is mixed — check sources yourself |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **ML framework** | PyTorch 2.2.2 |
+| **NLP models** | HuggingFace Transformers, spaCy |
+| **Backend** | FastAPI + Uvicorn |
+| **Database** | SQLite (persistent on HuggingFace Spaces) |
+| **Frontend** | Vanilla HTML/CSS/JS — fully responsive |
+| **Deployment** | Docker on HuggingFace Spaces (CPU free tier) |
 
 ---
 
 ## API Endpoints
 
-```
-POST /analyse          — Main inference endpoint
-GET  /health           — Model + DB + API status
-GET  /queries          — List stored queries (filterable by verdict)
-GET  /queries/{id}     — Single query with full claim data
-GET  /stats            — Summary stats
-```
-
-### Example request
+The backend exposes a REST API you can query directly:
 
 ```bash
-curl -X POST https://your-space.hf.space/analyse \
+# Analyse an article
+curl -X POST https://ruturajjadhav35-veritai.hf.space/analyse \
   -H "Content-Type: application/json" \
   -d '{"text": "Paste your article text here..."}'
+
+# Health check
+curl https://ruturajjadhav35-veritai.hf.space/health
+
+# Usage statistics
+curl https://ruturajjadhav35-veritai.hf.space/stats
+
+# Query history
+curl https://ruturajjadhav35-veritai.hf.space/queries
 ```
 
 ### Example response
@@ -100,17 +172,18 @@ curl -X POST https://your-space.hf.space/analyse \
 ```json
 {
   "verdict": "fake",
-  "confidence": 87.4,
+  "confidence": 91.4,
   "total_claims": 5,
-  "conflict_pct": 60,
+  "conflict_pct": 80,
   "claims": [
     {
-      "text": "Scientists confirmed 5G towers transmit mind-control frequencies",
+      "text": "5G towers transmit mind-control frequencies",
       "verdict": "refutes",
-      "conf": 91,
-      "evidence": "No scientific evidence supports this claim..."
+      "conf": 94,
+      "evidence": "[Reuters: No scientific evidence supports this claim...]"
     }
-  ]
+  ],
+  "processing_ms": 4823
 }
 ```
 
@@ -120,108 +193,101 @@ curl -X POST https://your-space.hf.space/analyse \
 
 ```
 VeritAI/
-├── main.py                  # FastAPI app — all endpoints + pipeline
+├── main.py                  # FastAPI backend — pipeline + all endpoints
 ├── static/
-│   └── index.html           # Frontend — responsive, dark mode
+│   └── index.html           # Frontend — responsive, dark mode support
 ├── model/
-│   ├── bert_fake_news.pt    # Fine-tuned BERT weights
+│   ├── bert_fake_news.pt    # Fine-tuned BERT weights (via Git LFS)
 │   └── tokenizer/           # Saved BERT tokenizer
 ├── Dockerfile               # HuggingFace Spaces deployment
 ├── requirements.txt         # Python dependencies
-├── .env                     # API keys (not committed)
-└── veritai.db               # SQLite database (persisted at /data/)
+├── .env.example             # Environment variable template
+└── .gitignore
 ```
 
 ---
 
-## Environment Variables
-
-Create a `.env` file (locally) or set Secrets in HuggingFace Spaces settings:
-
-```env
-NEWS_API_KEY=your_newsapi_key
-GOOGLE_FACTCHECK_API_KEY=your_google_key
-GUARDIAN_API_KEY=your_guardian_key
-DB_PATH=/data/veritai.db
-```
-
-> **Never commit your `.env` file.** Add it to `.gitignore`.
-
----
-
-## Local Development
+## Run Locally
 
 ```bash
-# Clone the repo
-git clone https://github.com/Ruturajjadhav35/VeritAI
-cd VeritAI
+# 1. Clone the repo
+git clone https://github.com/Ruturajjadhav35/Context-Aware-Fake-News-Detection-and-Fact-Verification-
+cd Context-Aware-Fake-News-Detection-and-Fact-Verification-
 
-# Create virtual environment
+# 2. Create a virtual environment
 python3.12 -m venv venv
-source venv/bin/activate       # Windows: venv\Scripts\activate
+source venv/bin/activate
 
-# Install CPU-only PyTorch first
-pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu
+# 3. Install PyTorch (CPU)
+pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 
-# Install remaining dependencies
+# 4. Install dependencies
 pip install -r requirements.txt
-
-# Download spaCy model
 python -m spacy download en_core_web_sm
 
-# Set up environment variables
+# 5. Set up environment variables
 cp .env.example .env
 # Edit .env and add your API keys
 
-# Run the server
+# 6. Run the server
 uvicorn main:app --reload --port 8000
 ```
 
 Open `http://localhost:8000` in your browser.
 
----
+### Environment Variables
 
-## Deploying to HuggingFace Spaces
+```env
+NEWS_API_KEY=your_newsapi_key
+GOOGLE_FACTCHECK_API_KEY=your_google_key
+GUARDIAN_API_KEY=your_guardian_key
+DB_PATH=./veritai.db
+```
 
-1. Create a new Space at [huggingface.co/spaces](https://huggingface.co/spaces)
-2. Select **Docker** as the SDK
-3. Push this repo to the Space's Git remote
-4. Add your API keys under **Settings → Repository secrets**:
-   - `NEWS_API_KEY`
-   - `GOOGLE_FACTCHECK_API_KEY`
-   - `GUARDIAN_API_KEY`
-5. The Space will build automatically — first build takes ~5 minutes
-
-> **Model file size**: `bert_fake_news.pt` is ~440MB. Use [Git LFS](https://git-lfs.com) to push it:
-> ```bash
-> git lfs install
-> git lfs track "*.pt"
-> git add .gitattributes
-> git add model/bert_fake_news.pt
-> git commit -m "Add model weights via LFS"
-> git push
-> ```
+Get your free API keys from:
+- [NewsAPI](https://newsapi.org/register)
+- [Google Fact Check Tools](https://console.cloud.google.com)
+- [The Guardian Open Platform](https://open-platform.theguardian.com/access)
 
 ---
 
 ## Limitations
 
-- BERT classification is influenced by writing style, not just factual content
-- NLI models can struggle with implicit negation and complex reasoning
-- Real-time breaking news may have no evidence in any source yet
-- Performs best on English-language political and general news
-- Satire, opinion pieces, and highly technical content may give unreliable results
+VeritAI is a research tool, not a truth oracle. A few honest caveats:
+
+- **Training data is from 2016–17** — misinformation tactics have evolved since then
+- **English only** — the pipeline is not trained for other languages
+- **Breaking news** — real-time events may not yet have evidence in any source
+- **Satire and opinion** — these aren't meant to be factual and may give unreliable results
+- **Writing style bias** — BERT picks up on how articles are written, not just what they say
+
+---
+
+## Roadmap
+
+- [x] BERT classifier — 92% accuracy on ISOT dataset
+- [x] Multi-source evidence retrieval (4 APIs)
+- [x] RoBERTa-MNLI claim verification
+- [x] Responsive web frontend with dark mode
+- [x] Deployed on HuggingFace Spaces
+- [ ] Continual learning pipeline — retrain on live query data
+- [ ] LIAR dataset integration for broader coverage
+- [ ] PostgreSQL migration for production scale
+- [ ] Browser extension
 
 ---
 
 ## Author
 
-**Ruturaj Jadhav**  
-MSc Artificial Intelligence — Queen Mary University of London  
-[GitHub](https://github.com/Ruturajjadhav35) · [LinkedIn](https://linkedin.com/in/ruturaj-jadhav11) · [Email](mailto:ruturajjadhav5338@gmail.com)
+**Ruturaj Jadhav**
+MSc Artificial Intelligence — Queen Mary University of London
+
+[![GitHub](https://img.shields.io/badge/GitHub-Ruturajjadhav35-black?style=flat&logo=github)](https://github.com/Ruturajjadhav35)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-ruturaj--jadhav11-blue?style=flat&logo=linkedin)](https://linkedin.com/in/ruturaj-jadhav11)
+[![Email](https://img.shields.io/badge/Email-ruturajjadhav5338@gmail.com-red?style=flat&logo=gmail)](mailto:ruturajjadhav5338@gmail.com)
 
 ---
 
-## License
-
-MIT — see [LICENSE](LICENSE) for details.
+<div align="center">
+<sub>Built with PyTorch · Transformers · FastAPI · spaCy · Docker</sub>
+</div>
