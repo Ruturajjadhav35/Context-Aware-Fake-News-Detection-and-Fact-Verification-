@@ -1,0 +1,31 @@
+# ── VeritAI — Python Dependencies ────────────────────────────────────────────
+# Python 3.12 · CPU-only · HuggingFace Spaces
+# torch is installed separately in Dockerfile via CPU wheel
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi
+uvicorn[standard]
+python-multipart
+httpx
+
+# ── ML & NLP ──────────────────────────────────────────────────────────────────
+transformers
+spacy
+# torch installed via CPU wheel in Dockerfile — do NOT add here
+
+# ── Data & utilities ──────────────────────────────────────────────────────────
+numpy
+requests
+beautifulsoup4
+lxml
+
+# ── Database ──────────────────────────────────────────────────────────────────
+aiosqlite
+
+# ── Environment & config ──────────────────────────────────────────────────────
+python-dotenv
+
+# ── Production extras ─────────────────────────────────────────────────────────
+pydantic
+wikipedia

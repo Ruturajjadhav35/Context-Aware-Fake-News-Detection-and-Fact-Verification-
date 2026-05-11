@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
+<meta name="theme-color" content="#0f0f0d" media="(prefers-color-scheme: dark)"/>
+<meta name="description" content="VeritAI — AI-powered fake news detection and fact verification using BERT, spaCy, and RoBERTa-MNLI."/>
+<title>VeritAI – Fake News Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+/* ── LIGHT THEME ── */
+:root{
+  --bg:#ffffff;
+  --surface:#f7f7f5;
+  --lift:#f0efec;
+  --raise:#e8e7e3;
+  --border:rgba(0,0,0,0.08);
+  --border-hi:rgba(0,0,0,0.16);
+  --text:#111111;
+  --muted:#888880;
+  --soft:#555550;
+  --accent:#c8890a;
+  --accent-dim:rgba(200,137,10,0.1);
+  --accent-border:rgba(200,137,10,0.25);
+  --red:#c0392b;
+  --red-dim:rgba(192,57,43,0.07);
+  --red-border:rgba(192,57,43,0.2);
+  --green:#1a7a4a;
+  --green-dim:rgba(26,122,74,0.07);
+  --green-border:rgba(26,122,74,0.2);
+  --amber:#b45309;
+  --amber-dim:rgba(180,83,9,0.08);
+  --amber-border:rgba(180,83,9,0.2);
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:0 12px 32px rgba(0,0,0,0.08),0 4px 8px rgba(0,0,0,0.04);
+  --r:10px;--r-lg:16px;--r-xl:20px;
+  --max-w:900px;--px:clamp(16px,4vw,40px);
+  --canvas-ink:0,0,0;
+}
+
+/* ── DARK THEME ── */
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#0f0f0d;
+    --surface:#1a1a17;
+    --lift:#222220;
+    --raise:#2e2e2b;
+    --border:rgba(255,255,255,0.08);
+    --border-hi:rgba(255,255,255,0.16);
+    --text:#f0efe8;
+    --muted:#6b6b62;
+    --soft:#9d9c94;
+    --accent:#e8a020;
+    --accent-dim:rgba(232,160,32,0.12);
+    --accent-border:rgba(232,160,32,0.3);
+    --red:#e05a4e;
+    --red-dim:rgba(224,90,78,0.1);
+    --red-border:rgba(224,90,78,0.25);
+    --green:#2ea86a;
+    --green-dim:rgba(46,168,106,0.1);
+    --green-border:rgba(46,168,106,0.25);
+    --amber:#d97706;
+    --amber-dim:rgba(217,119,6,0.1);
+    --amber-border:rgba(217,119,6,0.25);
+    --shadow-sm:0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md:0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg:0 12px 32px rgba(0,0,0,0.5);
+    --canvas-ink:255,255,255;
+  }
+}
+
+html{font-size:18px;scroll-behavior:smooth;-webkit-text-size-adjust:100%;}
+body{background:var(--bg);color:var(--text);font-family:'Geist',sans-serif;font-weight:400;line-height:1.65;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+#bg{position:fixed;inset:0;pointer-events:none;z-index:0;}
+.page{position:relative;z-index:1;max-width:var(--max-w);margin:0 auto;padding:0 var(--px) clamp(100px,14vh,140px);}
+
+/* ── NAV ── */
+nav{display:flex;align-items:center;justify-content:space-between;padding:clamp(22px,4vw,38px) 0 clamp(22px,4vw,34px);border-bottom:1px solid var(--border);margin-bottom:clamp(36px,6vw,60px);gap:16px;animation:fadeDown .6s ease both;}
+.logo{display:flex;flex-direction:column;gap:4px;}
+.logo-name{font-size:clamp(20px,3vw,26px);font-weight:600;letter-spacing:-.4px;color:var(--text);display:flex;align-items:center;gap:9px;}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px rgba(200,137,10,.4);animation:pulse 2.4s ease-in-out infinite;flex-shrink:0;}
+.logo-sub{font-family:'Geist Mono',monospace;font-size:clamp(11px,1.4vw,13px);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+.nav-links{display:flex;gap:4px;align-items:center;flex-shrink:0;}
+.nav-link{font-family:'Geist',sans-serif;font-size:clamp(13px,1.4vw,14px);font-weight:400;color:var(--soft);background:transparent;border:1px solid transparent;border-radius:100px;padding:7px 16px;cursor:pointer;transition:all .2s;letter-spacing:.005em;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
+.nav-link:hover{color:var(--text);background:var(--surface);border-color:var(--border);}
+@media(max-width:520px){.nav-link{font-size:13px;padding:6px 12px;}}
+@media(max-width:380px){.nav-link{padding:6px 10px;}}
+
+/* ── MODAL ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:flex-start;justify-content:center;padding:clamp(24px,6vw,80px) 20px 40px;z-index:1000;overflow-y:auto;animation:bdFade .2s ease;}
+.modal-backdrop.show{display:flex;}
+@keyframes bdFade{from{opacity:0}to{opacity:1}}
+.modal{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-xl);padding:clamp(28px,4vw,44px);width:100%;max-width:680px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.25);animation:modalUp .3s ease;}
+@keyframes modalUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.modal-close{position:absolute;top:18px;right:18px;width:36px;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:50%;color:var(--soft);font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.modal-close:hover{background:var(--text);color:var(--bg);border-color:var(--text);transform:rotate(90deg);}
+.modal-content h2{font-size:clamp(22px,3.5vw,30px);font-weight:400;letter-spacing:-.5px;color:var(--text);margin-bottom:8px;padding-right:50px;}
+.modal-content .modal-sub{font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:24px;}
+.modal-content h3{font-size:16px;font-weight:500;color:var(--text);margin:24px 0 8px;letter-spacing:-.2px;}
+.modal-content p{font-size:15px;line-height:1.7;color:var(--soft);margin-bottom:14px;font-weight:400;}
+.modal-content ul{list-style:none;padding:0;margin:8px 0 16px;}
+.modal-content li{font-size:14px;line-height:1.7;color:var(--soft);padding:6px 0 6px 22px;position:relative;}
+.modal-content li::before{content:'→';position:absolute;left:0;color:var(--accent);font-weight:500;}
+.modal-content strong{color:var(--text);font-weight:500;}
+.modal-content a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-border);transition:border-color .15s;}
+.modal-content a:hover{border-bottom-color:var(--accent);}
+.modal-content .tech-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 20px;}
+.modal-content .tech-chip{font-family:'Geist Mono',monospace;font-size:11px;color:var(--soft);background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:5px 12px;letter-spacing:.03em;}
+.modal-content .contact-grid{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.modal-content .contact-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;transition:all .15s;display:flex;align-items:center;gap:16px;min-width:0;}
+.modal-content .contact-item:hover{border-color:var(--border-hi);box-shadow:var(--shadow-sm);}
+.modal-content .contact-label{font-family:'Geist Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;flex-shrink:0;width:90px;}
+.modal-content .contact-val{font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.modal-content .contact-val a{color:var(--text);border:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.modal-content .contact-val a:hover{color:var(--accent);}
+
+/* ── HERO ── */
+.hero{margin-bottom:clamp(28px,5vw,52px);animation:fadeUp .6s .1s ease both;}
+.hero h1{font-size:clamp(32px,6vw,58px);font-weight:300;letter-spacing:-1.5px;line-height:1.12;margin-bottom:clamp(14px,2vw,20px);color:var(--text);}
+.hero h1 em{font-style:italic;color:var(--accent);font-weight:400;}
+.hero p{font-size:clamp(16px,2vw,18px);color:var(--soft);font-weight:400;max-width:560px;line-height:1.8;}
+
+/* ── PIPELINE ── */
+.pipeline{display:flex;align-items:center;gap:7px;margin-bottom:clamp(22px,4vw,44px);flex-wrap:wrap;animation:fadeUp .6s .15s ease both;}
+.p-pill{font-family:'Geist Mono',monospace;font-size:clamp(11px,1.3vw,13px);color:var(--soft);letter-spacing:.03em;border:1px solid var(--border);border-radius:100px;padding:6px 14px;background:var(--surface);white-space:nowrap;box-shadow:var(--shadow-sm);position:relative;cursor:help;transition:all .2s;}
+.p-pill:hover{color:var(--text);border-color:var(--accent);box-shadow:0 4px 12px rgba(200,137,10,.15);transform:translateY(-1px);}
+.p-pill[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 12px);left:50%;transform:translateX(-50%);background:#0a0a0a;color:#f5f5f5;font-family:'Geist',sans-serif;font-size:13px;font-weight:400;letter-spacing:0;text-transform:none;padding:14px 18px;border-radius:10px;width:max-content;max-width:340px;white-space:normal;line-height:1.55;z-index:1000;box-shadow:0 8px 32px rgba(0,0,0,0.3);animation:tipFade .2s ease;pointer-events:none;}
+.p-pill[data-tip]:hover::before{content:'';position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;background:#0a0a0a;z-index:1001;pointer-events:none;}
+@keyframes tipFade{from{opacity:0;transform:translateX(-50%) translateY(4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@media(max-width:520px){.p-arr{display:none;}.p-pill{font-size:11px;padding:5px 11px;}}
+
+/* ── EXAMPLES ── */
+.examples{display:flex;align-items:center;gap:7px;margin-bottom:clamp(18px,3vw,32px);flex-wrap:wrap;animation:fadeUp .6s .2s ease both;}
+.ex-label{font-family:'Geist Mono',monospace;font-size:13px;color:var(--muted);white-space:nowrap;}
+.ex-chip{font-size:14px;color:var(--soft);border:1px solid var(--border);border-radius:100px;padding:7px 16px;cursor:pointer;background:var(--surface);transition:all .2s;box-shadow:var(--shadow-sm);}
+.ex-chip:hover{color:var(--text);border-color:var(--border-hi);box-shadow:var(--shadow-md);transform:translateY(-1px);}
+@media(max-width:400px){.ex-label{display:none;}.ex-chip{font-size:13px;}}
+
+/* ── SMART INPUT CARD ── */
+.input-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:clamp(20px,3vw,32px);margin-bottom:20px;transition:border-color .3s,box-shadow .3s;animation:fadeUp .6s .25s ease both;box-shadow:var(--shadow-md);}
+.input-card:focus-within{border-color:var(--border-hi);box-shadow:var(--shadow-lg),0 0 0 3px rgba(200,137,10,.06);}
+.input-label{font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.input-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* Smart single input */
+.smart-input-wrap{position:relative;}
+.smart-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Geist',sans-serif;font-size:16px;font-weight:400;line-height:1.75;padding:16px 18px;resize:vertical;min-height:clamp(130px,22vw,170px);outline:none;transition:border-color .2s,box-shadow .2s;}
+.smart-input::placeholder{color:var(--muted);}
+.smart-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,137,10,.08);}
+.input-type-badge{position:absolute;top:12px;right:12px;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:100px;border:1px solid;transition:all .3s;pointer-events:none;opacity:0;}
+.input-type-badge.show{opacity:1;}
+.input-type-badge.url{color:var(--accent);background:var(--accent-dim);border-color:var(--accent-border);}
+.input-type-badge.text{color:var(--soft);background:var(--lift);border-color:var(--border);}
+
+/* word count hint */
+.input-hint{display:flex;align-items:center;gap:8px;margin-top:10px;min-height:20px;}
+.char-count{font-family:'Geist Mono',monospace;font-size:13px;color:var(--muted);transition:color .3s;}
+.char-count.good{color:var(--green);}
+.word-hint{font-size:13px;color:var(--amber);transition:opacity .3s;opacity:0;}
+.word-hint.show{opacity:1;}
+
+.input-footer{display:flex;align-items:center;justify-content:space-between;margin-top:16px;gap:10px;flex-wrap:wrap;}
+.btn{display:flex;align-items:center;gap:9px;background:var(--text);color:var(--bg);border:none;border-radius:var(--r);padding:13px 28px;font-family:'Geist',sans-serif;font-size:clamp(15px,1.7vw,16px);font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;box-shadow:var(--shadow-sm);-webkit-tap-highlight-color:transparent;}
+.btn:hover{opacity:.85;transform:translateY(-1px);box-shadow:var(--shadow-md);}
+.btn:active{transform:translateY(0);}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.btn-arr{font-size:18px;transition:transform .2s;}
+.btn:hover .btn-arr{transform:translateX(3px);}
+
+/* ── STICKY MOBILE ANALYSE BAR ── */
+.sticky-bar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--bg);border-top:1px solid var(--border);padding:12px 20px;padding-bottom:calc(12px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,0.08);}
+.sticky-bar .btn{width:100%;justify-content:center;font-size:16px;padding:14px;}
+@media(max-width:600px){
+  .sticky-bar{display:block;}
+  .input-footer .btn{display:none;}
+}
+
+/* ── LOADING ── */
+.loading{display:none;margin-bottom:20px;animation:fadeUp .4s ease both;}
+.loading.show{display:block;}
+.loading-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:24px 28px;box-shadow:var(--shadow-sm);}
+.loading-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.loading-title{font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+.loading-pct{font-family:'Geist Mono',monospace;font-size:13px;color:var(--accent);font-weight:500;}
+.steps{display:flex;flex-direction:column;gap:12px;}
+.step{display:flex;align-items:center;gap:12px;opacity:.3;transition:opacity .4s;}
+.step.active{opacity:1;}.step.done{opacity:.55;}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--raise);flex-shrink:0;transition:background .3s;}
+.step.active .step-dot{background:var(--accent);box-shadow:0 0 6px rgba(200,137,10,.5);animation:pulse 1.2s infinite;}
+.step.done .step-dot{background:var(--green);}
+.step-lbl{font-size:clamp(13px,1.6vw,15px);color:var(--muted);font-weight:400;}
+.step.active .step-lbl{color:var(--text);font-weight:500;}
+.prog-wrap{height:3px;background:var(--lift);border-radius:3px;margin-top:18px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .6s ease;}
+
+/* ── RESULTS ── */
+.results{display:none;animation:fadeUp .5s ease both;}
+.results.show{display:block;}
+
+/* ── VERDICT BANNER ── */
+.verdict{border-radius:var(--r-xl);padding:clamp(22px,3vw,34px) clamp(22px,3vw,38px);margin-bottom:16px;display:flex;align-items:center;gap:clamp(16px,3vw,28px);border:1.5px solid transparent;position:relative;overflow:hidden;flex-wrap:wrap;box-shadow:var(--shadow-md);animation:verdictReveal .5s ease both;}
+@keyframes verdictReveal{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+.verdict.fake{background:linear-gradient(135deg,var(--red-dim) 0%,transparent 100%);border-color:var(--red-border);}
+.verdict.real{background:linear-gradient(135deg,var(--green-dim) 0%,transparent 100%);border-color:var(--green-border);}
+.verdict.uncertain{background:linear-gradient(135deg,var(--amber-dim) 0%,transparent 100%);border-color:var(--amber-border);}
+.v-icon{font-size:clamp(24px,4vw,30px);flex-shrink:0;width:clamp(52px,7vw,66px);height:clamp(52px,7vw,66px);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.verdict.fake .v-icon{background:var(--red-dim);color:var(--red);}
+.verdict.real .v-icon{background:var(--green-dim);color:var(--green);}
+.verdict.uncertain .v-icon{background:var(--amber-dim);color:var(--amber);}
+.v-content{flex:1;min-width:180px;}
+.v-label{font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.v-title{font-size:clamp(22px,4.5vw,32px);font-weight:500;letter-spacing:-.3px;margin-bottom:6px;}
+.verdict.fake .v-title{color:var(--red);}
+.verdict.real .v-title{color:var(--green);}
+.verdict.uncertain .v-title{color:var(--amber);}
+.v-reason{font-size:clamp(13px,1.5vw,15px);color:var(--soft);font-weight:400;line-height:1.6;margin-bottom:5px;}
+.v-sub{font-size:clamp(13px,1.4vw,14px);color:var(--muted);font-weight:400;}
+
+/* Confidence gauge */
+.v-conf{text-align:right;flex-shrink:0;min-width:110px;}
+.v-pct{font-size:clamp(34px,6.5vw,46px);font-weight:300;letter-spacing:-1.5px;line-height:1;}
+.verdict.fake .v-pct{color:var(--red);}
+.verdict.real .v-pct{color:var(--green);}
+.verdict.uncertain .v-pct{color:var(--amber);}
+.v-conf-lbl{font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.08em;margin-top:3px;margin-bottom:8px;}
+.conf-gauge{height:4px;background:var(--raise);border-radius:4px;overflow:hidden;width:100%;}
+.conf-fill{height:100%;border-radius:4px;width:0%;transition:width 1.2s cubic-bezier(.25,.46,.45,.94);}
+.verdict.fake .conf-fill{background:var(--red);}
+.verdict.real .conf-fill{background:var(--green);}
+.verdict.uncertain .conf-fill{background:var(--amber);}
+
+/* Share button */
+.v-share{display:flex;align-items:center;gap:6px;font-family:'Geist',sans-serif;font-size:13px;color:var(--soft);background:var(--bg);border:1px solid var(--border);border-radius:100px;padding:7px 14px;cursor:pointer;transition:all .2s;margin-top:12px;-webkit-tap-highlight-color:transparent;box-shadow:var(--shadow-sm);}
+.v-share:hover{border-color:var(--border-hi);color:var(--text);}
+
+/* ── CONFIDENCE TIER BADGE ── */
+.tier-badge{display:inline-flex;align-items:center;gap:6px;font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;border-radius:100px;margin-top:8px;border:1px solid;}
+.tier-high{color:var(--green);background:var(--green-dim);border-color:var(--green-border);}
+.tier-medium{color:var(--amber);background:var(--amber-dim);border-color:var(--amber-border);}
+.tier-low{color:var(--muted);background:var(--lift);border-color:var(--border);}
+.tier-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.tier-high .tier-dot{background:var(--green);}
+.tier-medium .tier-dot{background:var(--amber);}
+.tier-low .tier-dot{background:var(--muted);}
+
+/* ── METRICS ── */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:clamp(16px,2vw,20px) clamp(16px,2vw,22px);box-shadow:var(--shadow-sm);}
+.m-label{font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;}
+.m-val{font-size:clamp(24px,4vw,30px);font-weight:300;letter-spacing:-.5px;color:var(--text);}
+.m-sub{font-size:13px;color:var(--muted);margin-top:3px;}
+
+/* ── SECTION HEADING ── */
+.sec-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px;margin-top:clamp(22px,4vw,36px);}
+.sec-hd h2{font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;}
+.sec-hd::after{content:'';flex:1;height:1px;background:var(--border);}
+.sec-count{font-family:'Geist Mono',monospace;font-size:12px;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent-border);border-radius:100px;padding:3px 11px;}
+
+/* ── RISKS ── */
+.risks{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;}
+.risk-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow-sm);}
+.risk-bar-wrap{flex:1;}
+.risk-name{font-family:'Geist Mono',monospace;font-size:12px;color:var(--soft);letter-spacing:.04em;margin-bottom:7px;}
+.risk-bg{height:4px;background:var(--raise);border-radius:4px;overflow:hidden;}
+.risk-fill{height:100%;border-radius:4px;transition:width 1s ease;width:0%;}
+.risk-val{font-family:'Geist Mono',monospace;font-size:13px;color:var(--text);min-width:34px;text-align:right;}
+
+/* ── CLAIM CARDS ── */
+.claims-list{display:flex;flex-direction:column;gap:12px;}
+
+/* Desktop: normal stacked cards */
+.claim{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:clamp(16px,2vw,22px);display:grid;grid-template-columns:1fr auto;gap:16px;align-items:start;transition:border-color .2s,box-shadow .2s;animation:fadeUp .5s ease both;box-shadow:var(--shadow-sm);}
+.claim:hover{border-color:var(--border-hi);box-shadow:var(--shadow-md);}
+.claim-text{font-size:clamp(15px,1.7vw,16px);line-height:1.7;color:var(--text);font-weight:400;margin-bottom:10px;}
+.claim-ev{font-size:clamp(13px,1.4vw,14px);color:var(--muted);font-style:italic;line-height:1.65;padding-left:12px;border-left:2px solid var(--raise);font-weight:400;}
+.claim-sources{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.claim-source-link{display:inline-flex;align-items:center;gap:5px;font-family:'Geist Mono',monospace;font-size:11px;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent-border);border-radius:100px;padding:4px 10px;text-decoration:none;font-weight:500;transition:all .15s;}
+.claim-source-link:hover{background:var(--accent);color:var(--bg);border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow-sm);}
+.claim-source-link::after{content:'↗';font-size:11px;margin-left:1px;}
+.claim-source-link.no-link{cursor:default;color:var(--muted);background:var(--lift);border-color:var(--border);}
+.claim-source-link.no-link::after{content:'';}
+.claim-source-link.no-link:hover{background:var(--lift);color:var(--muted);transform:none;box-shadow:none;}
+.badge-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:88px;flex-shrink:0;}
+.badge-icon{font-size:20px;}
+.badge{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 11px;border-radius:100px;font-weight:500;white-space:nowrap;}
+.b-sup{color:var(--green);background:var(--green-dim);border:1px solid var(--green-border);}
+.b-ref{color:var(--red);background:var(--red-dim);border:1px solid var(--red-border);}
+.b-nei{color:var(--amber);background:var(--amber-dim);border:1px solid var(--amber-border);}
+.badge-conf{font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted);}
+
+/* ── MOBILE SWIPEABLE CLAIMS ── */
+@media(max-width:600px){
+  .claim{grid-template-columns:1fr;gap:12px;}
+  .badge-wrap{flex-direction:row;justify-content:flex-start;min-width:auto;}
+
+  /* Swipe carousel on mobile */
+  .claims-list{
+    display:flex;flex-direction:row;
+    overflow-x:auto;scroll-snap-type:x mandatory;
+    gap:12px;padding-bottom:12px;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .claims-list::-webkit-scrollbar{display:none;}
+  .claim{
+    min-width:min(85vw,340px);
+    flex-shrink:0;
+    scroll-snap-align:start;
+  }
+  .swipe-hint{display:flex;}
+}
+.swipe-hint{display:none;align-items:center;gap:6px;font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;letter-spacing:.05em;}
+.swipe-dots{display:none;gap:5px;margin-top:10px;}
+@media(max-width:600px){.swipe-dots{display:flex;}}
+.swipe-dot{width:5px;height:5px;border-radius:50%;background:var(--raise);transition:background .2s,transform .2s;}
+.swipe-dot.active{background:var(--accent);transform:scale(1.3);}
+
+/* ── FOOTER ── */
+.res-foot{margin-top:clamp(22px,4vw,36px);padding-top:clamp(18px,3vw,26px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.foot-note{font-size:13px;color:var(--muted);font-weight:400;max-width:500px;line-height:1.65;}
+.reset-btn{font-family:'Geist',sans-serif;font-size:14px;color:var(--soft);background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 20px;cursor:pointer;transition:all .2s;white-space:nowrap;box-shadow:var(--shadow-sm);-webkit-tap-highlight-color:transparent;}
+.reset-btn:hover{color:var(--text);border-color:var(--border-hi);box-shadow:var(--shadow-md);}
+
+/* ── RESPONSIVE LAYOUT ── */
+
+/* Tablet: 2-column results */
+@media(min-width:640px) and (max-width:1023px){
+  .results-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  .results-grid .verdict{grid-column:1/-1;}
+  .results-grid .metrics{grid-column:1/-1;}
+  .results-grid .risks-col{grid-column:1/2;}
+  .results-grid .claims-col{grid-column:2/3;}
+}
+
+/* Large screen: max-width container */
+@media(min-width:1200px){
+  :root{--max-w:980px;}
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--raise);border-radius:3px;}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+/* ── REDUCED MOTION ── */
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important;}
+}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="page">
+
+  <nav>
+    <div class="logo">
+      <div class="logo-name"><div class="logo-dot"></div>VeritAI</div>
+      <div class="logo-sub">Fake News Detection &amp; Fact Verification</div>
+    </div>
+    <div class="nav-links">
+      <button class="nav-link" onclick="openModal('about')">About</button>
+      <button class="nav-link" onclick="openModal('more')">More</button>
+      <button class="nav-link" onclick="openModal('contact')">Contact</button>
+    </div>
+  </nav>
+
+  <!-- MODAL -->
+  <div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h1>Is this article<br><em>telling the truth?</em></h1>
+    <p>Paste any news article or URL. BERT detects misinformation, spaCy extracts factual claims, and RoBERTa-MNLI cross-verifies each claim against Wikipedia, Google Fact Check, NewsAPI, and The Guardian.</p>
+  </div>
+
+  <div class="pipeline">
+    <div class="p-pill" data-tip="BERT (Bidirectional Encoder Representations from Transformers) is a transformer model fine-tuned on 44,898 articles from the ISOT Fake News Dataset. It reads the first 128 tokens of an article and outputs a binary fake/real prediction. We chose BERT because of its strong contextual understanding — it recognises misinformation patterns like sensational language, vague attribution, and conspiracy framing.">① BERT classification</div>
+    <div class="p-arr">→</div>
+    <div class="p-pill" data-tip="spaCy is an industrial NLP library used for claim extraction. It splits the article into sentences, identifies named entities (people, organisations, places, dates, money), and scores each sentence by how fact-checkable it is. We use it because verifying every sentence would be expensive — spaCy lets us focus only on the genuinely testable factual claims.">② spaCy claims</div>
+    <div class="p-arr">→</div>
+    <div class="p-pill" data-tip="RoBERTa-MNLI (Robustly Optimized BERT, fine-tuned on the Multi-Genre NLI corpus) performs Natural Language Inference. Given a claim and an evidence passage, it outputs one of three labels: SUPPORTS, REFUTES, or NOT ENOUGH INFO. We use it as the final verifier — it doesn't just match keywords, it understands semantic entailment between the claim and the evidence.">③ RoBERTa-MNLI</div>
+    <div class="p-arr">→</div>
+    <div class="p-pill source-pill" data-tip="Wikipedia provides structured encyclopedic context. We query the MediaWiki API to fetch summaries of relevant pages. Used as the baseline source weight 1.0× because it covers historical and background facts that contextualise news claims. Always available, no API key required.">📚 Wikipedia</div>
+    <div class="p-pill source-pill" data-tip="Google Fact Check Tools API aggregates verdicts from professional fact-checkers including PolitiFact, Snopes, Reuters Fact Check, AP Fact Check, and FullFact. Used with the highest weight 1.5× because if a claim has already been formally fact-checked, that verdict is the most authoritative evidence available.">🔍 Google Fact Check</div>
+    <div class="p-pill source-pill" data-tip="NewsAPI.org indexes 80,000+ news outlets globally. We restrict queries to trusted sources only: Reuters, BBC, Associated Press, The Guardian, Bloomberg, and major broadcasters. Used with weight 1.3×.">📰 NewsAPI</div>
+    <div class="p-pill source-pill" data-tip="The Guardian Open Platform provides full article body text. Used with weight 1.2× as an independent quality-journalism source. Including a single named outlet alongside aggregators ensures we always have at least one verified human-written article to verify against.">🛡️ The Guardian</div>
+  </div>
+
+  <div class="examples">
+    <span class="ex-label">Try →</span>
+    <span class="ex-chip" onclick="loadEx('fake')">🔴 Fabricated story</span>
+    <span class="ex-chip" onclick="loadEx('real')">🟢 Reuters article</span>
+    <span class="ex-chip" onclick="loadEx('ambiguous')">🟡 Misleading headline</span>
+  </div>
+
+  <!-- SMART INPUT CARD -->
+  <div class="input-card" id="inputCard">
+    <div class="input-label">Article input</div>
+    <div class="smart-input-wrap">
+      <textarea
+        id="articleText"
+        class="smart-input"
+        placeholder="Paste article text or drop a URL — we'll detect it automatically…"
+        oninput="handleInput()"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      ></textarea>
+      <div class="input-type-badge" id="inputTypeBadge"></div>
+    </div>
+    <div class="input-hint">
+      <span class="char-count" id="charCount">0 words</span>
+      <span class="word-hint" id="wordHint">⚡ More text improves accuracy</span>
+    </div>
+    <div class="input-footer">
+      <div></div>
+      <button class="btn" id="analyseBtn" onclick="runAnalysis()">Analyse article <span class="btn-arr">→</span></button>
+    </div>
+  </div>
+
+  <!-- STICKY MOBILE BAR -->
+  <div class="sticky-bar" id="stickyBar">
+    <button class="btn" onclick="runAnalysis()">Analyse article <span class="btn-arr">→</span></button>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="loading-card">
+      <div class="loading-hd">
+        <div class="loading-title">Running pipeline</div>
+        <div class="loading-pct" id="loadPct">0%</div>
+      </div>
+      <div class="steps">
+        <div class="step" id="s0"><div class="step-dot"></div><span class="step-lbl">Tokenising with BERT tokenizer…</span></div>
+        <div class="step" id="s1"><div class="step-dot"></div><span class="step-lbl">Running BERT fake/real classifier…</span></div>
+        <div class="step" id="s2"><div class="step-dot"></div><span class="step-lbl">Extracting claims with spaCy NLP…</span></div>
+        <div class="step" id="s3"><div class="step-dot"></div><span class="step-lbl">Fetching evidence from 4 sources…</span></div>
+        <div class="step" id="s4"><div class="step-dot"></div><span class="step-lbl">Running RoBERTa-MNLI verification…</span></div>
+        <div class="step" id="s5"><div class="step-dot"></div><span class="step-lbl">Aggregating results…</span></div>
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" id="progFill"></div></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <!-- Verdict banner -->
+    <div class="verdict" id="verdictBanner">
+      <div class="v-icon" id="vIcon"></div>
+      <div class="v-content">
+        <div class="v-label">VeritAI verdict</div>
+        <div class="v-title" id="vTitle"></div>
+        <div class="v-reason" id="vReason"></div>
+        <div class="v-sub" id="vSub"></div>
+        <div id="tierBadge"></div>
+        <button class="v-share" onclick="shareResult()" aria-label="Share result">
+          <span>⬆</span> Share result
+        </button>
+      </div>
+      <div class="v-conf">
+        <div class="v-pct" id="vPct"></div>
+        <div class="v-conf-lbl">CONFIDENCE</div>
+        <div class="conf-gauge"><div class="conf-fill" id="confFill"></div></div>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics">
+      <div class="metric"><div class="m-label">Claims extracted</div><div class="m-val" id="mClaims">—</div><div class="m-sub">by spaCy NLP</div></div>
+      <div class="metric"><div class="m-label">Claims verified</div><div class="m-val" id="mVerified">—</div><div class="m-sub">against sources</div></div>
+      <div class="metric"><div class="m-label">Conflict rate</div><div class="m-val" id="mConflict">—</div><div class="m-sub">refuted by evidence</div></div>
+    </div>
+
+    <!-- Risk signals -->
+    <div class="sec-hd"><h2>Risk signals</h2></div>
+    <div class="risks" id="risks"></div>
+
+    <!-- Claim cards -->
+    <div class="sec-hd">
+      <h2>Claim-by-claim verification</h2>
+      <div class="sec-count" id="claimCount"></div>
+    </div>
+    <div class="swipe-hint" id="swipeHint">← Swipe to browse claims →</div>
+    <div class="claims-list" id="claimsList"></div>
+    <div class="swipe-dots" id="swipeDots"></div>
+
+    <!-- Disclaimer -->
+    <div style="margin-top:16px;padding:14px 16px;background:var(--amber-dim);border:1px solid var(--amber-border);border-radius:var(--r);font-size:13px;color:var(--soft);line-height:1.65;">
+      <strong style="color:var(--text)">Scope note:</strong> VeritAI performs best on political and general news. Results on satire, opinion pieces, and highly technical content may be less reliable. Always verify important claims by reading the original sources.
+    </div>
+
+    <div class="res-foot">
+      <div class="foot-note">Results generated by a fine-tuned BERT classifier trained on 44,898 articles. For informational purposes only.</div>
+      <button class="reset-btn" onclick="reset()">← Analyse another</button>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+/* ── CANVAS BACKGROUND ── */
+(function(){
+  const c=document.getElementById('bg'),ctx=c.getContext('2d');
+  const WORDS=['BREAKING NEWS','EXCLUSIVE','FACT CHECK','FABRICATED','MISINFORMATION',
+    'DISPUTED','MISLEADING','PROPAGANDA','DEEPFAKE','CONSPIRACY','REDACTED',
+    'UNVERIFIED','LEAKED','CENSORED','FALSE FLAG','VIRAL LIE','DISINFORMATION',
+    'SUPPRESSED','SOURCE UNKNOWN','BOTS SPREADING','ECHO CHAMBER','SATIRE',
+    'TRUTH OR FICTION?','VERIFY BEFORE SHARING','ALGORITHM AMPLIFIED'];
+  const STAMPS=['FAKE','FALSE','VERIFIED','DISPUTED','SATIRE','MISLEADING'];
+  const SCOL={'FAKE':'192,57,43','FALSE':'192,57,43','VERIFIED':'26,122,74','DISPUTED':'180,83,9','SATIRE':'37,99,235','MISLEADING':'180,83,9'};
+  const TYPES=['word','stamp','redact','dots','lines'];
+  let W,H,pts;
+  const r=(a,b)=>a+Math.random()*(b-a);
+  const ri=(a,b)=>Math.floor(r(a,b));
+  const pick=a=>a[ri(0,a.length)];
+  const isDark=()=>window.matchMedia('(prefers-color-scheme:dark)').matches;
+  function mk(){
+    const t=pick(TYPES);
+    return{t,x:r(0,W),y:r(0,H),vx:r(-.06,.06),vy:r(-.04,.04),rot:r(-.35,.35),alpha:r(.012,.04),
+      word:t==='word'?pick(WORDS):null,stamp:t==='stamp'?pick(STAMPS):null,
+      fs:t==='word'?r(9,15):t==='stamp'?r(18,32):null,
+      w:t==='redact'?r(40,140):null,h:t==='redact'?r(4,8):null,
+      dc:t==='dots'?ri(4,9):null,nl:t==='lines'?ri(3,5):null,
+      lws:t==='lines'?Array.from({length:6},()=>r(30,100)):null};
+  }
+  function resize(){W=c.width=innerWidth;H=c.height=innerHeight;pts=Array.from({length:Math.floor(W*H/15000)},mk);}
+  function draw(p){
+    const ink=isDark()?'255,255,255':'0,0,0';
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.globalAlpha=p.alpha;
+    if(p.t==='word'){ctx.font=`400 ${p.fs}px 'Geist Mono',monospace`;ctx.fillStyle=`rgb(${ink})`;ctx.fillText(p.word,0,0);}
+    else if(p.t==='stamp'){const col=SCOL[p.stamp]||ink;ctx.font=`600 ${p.fs}px 'Geist',sans-serif`;ctx.strokeStyle=`rgba(${col},.7)`;ctx.lineWidth=p.fs*.07;ctx.strokeText(p.stamp,0,0);}
+    else if(p.t==='redact'){ctx.fillStyle=`rgba(${ink},.85)`;ctx.fillRect(0,0,p.w,p.h);}
+    else if(p.t==='dots'){ctx.fillStyle=`rgb(${ink})`;for(let i=0;i<p.dc;i++){ctx.beginPath();ctx.arc(i*7,0,1.1,0,Math.PI*2);ctx.fill();}}
+    else if(p.t==='lines'){ctx.fillStyle=`rgb(${ink})`;for(let i=0;i<p.nl;i++)ctx.fillRect(0,i*7,p.lws[i]||60,2);}
+    ctx.restore();
+  }
+  function tick(){ctx.clearRect(0,0,W,H);for(const p of pts){p.x+=p.vx;p.y+=p.vy;if(p.x<-220)p.x=W+80;if(p.x>W+220)p.x=-80;if(p.y<-220)p.y=H+80;if(p.y>H+220)p.y=-80;draw(p);}requestAnimationFrame(tick);}
+  addEventListener('resize',resize);resize();tick();
+})();
+
+/* ── APP STATE ── */
+const EX={
+  fake:{text:`BREAKING: Scientists at MIT have confirmed that 5G towers are transmitting mind-control frequencies that alter human behaviour. A leaked internal document, obtained exclusively, reveals that the technology was deliberately designed by a shadowy global consortium to suppress critical thinking worldwide. Government health agencies have reportedly been paid to keep this hidden. Whistleblowers who attempted to speak out have been silenced.`},
+  real:{text:`LONDON (Reuters) - British Prime Minister Theresa May does not raise the possibility of leaving the European Union without a deal in a letter she sent to European Council President Donald Tusk on Wednesday, a government spokesperson said. May sent the letter formally triggering Article 50, which starts the two-year process of the UK leaving the EU. The letter lays out Britain's negotiating position and seeks a "deep and special partnership" with the European Union after Brexit.`},
+  ambiguous:{text:`New study shows coffee drinkers live longer than those who abstain. Researchers at Harvard Medical School found a significant correlation between daily coffee consumption and reduced mortality rates. The observational study tracked over 200,000 participants for 30 years and found that people who drank 3-5 cups per day had a 15% lower risk of premature death. However, experts caution that correlation does not imply causation.`}
+};
+
+let currentResult=null;
+
+/* ── SMART INPUT DETECTION ── */
+function isURL(str){
+  try{const u=new URL(str.trim());return u.protocol==='http:'||u.protocol==='https:';}catch{return false;}
+}
+
+function handleInput(){
+  const val=document.getElementById('articleText').value;
+  const badge=document.getElementById('inputTypeBadge');
+  const hint=document.getElementById('wordHint');
+  const countEl=document.getElementById('charCount');
+
+  // Detect URL vs text
+  if(val.trim().length>4){
+    if(isURL(val.trim())){
+      badge.textContent='URL detected';
+      badge.className='input-type-badge show url';
+    } else {
+      badge.textContent='Article text';
+      badge.className='input-type-badge show text';
+    }
+  } else {
+    badge.className='input-type-badge';
+  }
+
+  // Word count
+  const words=val.trim().split(/\s+/).filter(w=>w.length>0).length;
+  if(val.trim().length===0){
+    countEl.textContent='0 words';
+    countEl.className='char-count';
+    hint.className='word-hint';
+    return;
+  }
+  countEl.textContent=words+' word'+(words!==1?'s':'');
+  if(words>=80){
+    countEl.className='char-count good';
+    hint.className='word-hint';
+  } else {
+    countEl.className='char-count';
+    hint.className='word-hint show';
+  }
+}
+
+function loadEx(type){
+  const ta=document.getElementById('articleText');
+  ta.value=EX[type].text;
+  handleInput();
+  ta.focus();
+}
+
+/* ── CONFIDENCE TIER ── */
+function getConfidenceTier(bertScore,refutedPct,supportedPct){
+  const agreement=Math.max(refutedPct,supportedPct);
+  if(bertScore>=85&&agreement>=60) return{tier:'high',label:'High confidence',cls:'tier-high'};
+  if(bertScore>=65&&agreement>=40) return{tier:'medium',label:'Moderate confidence',cls:'tier-medium'};
+  return{tier:'low',label:'Low confidence — treat with caution',cls:'tier-low'};
+}
+
+/* ── PLAIN-ENGLISH VERDICT REASON ── */
+function buildReason(d,claims){
+  const tot=Math.max(claims.length,1);
+  const refuted=claims.filter(c=>c.verdict==='refutes').length;
+  const supported=claims.filter(c=>c.verdict==='supports').length;
+  const nei=claims.filter(c=>c.verdict==='nei').length;
+
+  if(d.verdict==='uncertain'){
+    return'Conflicting signals across sources — not enough evidence for a reliable verdict.';
+  }
+  if(claims.length===0){
+    return d.verdict==='fake'
+      ?'BERT detected writing patterns consistent with fabricated content, but no specific claims could be extracted to verify.'
+      :'BERT found patterns consistent with factual reporting, but no specific claims could be extracted.';
+  }
+  const parts=[];
+  if(refuted>0) parts.push(`${refuted} of ${tot} claim${tot>1?'s':''} refuted by sources`);
+  if(supported>0) parts.push(`${supported} supported`);
+  if(nei>0) parts.push(`${nei} unverifiable`);
+  const claimSummary=parts.join(', ')+'.';
+  const bertNote=d.verdict==='fake'
+    ?'Writing style flagged as consistent with fabricated content.'
+    :'Writing style consistent with factual reporting.';
+  return claimSummary+' '+bertNote;
+}
+
+/* ── ANALYSIS ── */
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function runAnalysis(){
+  const val=document.getElementById('articleText').value.trim();
+  if(!val) return;
+
+  // Hide input, show loading
+  document.getElementById('inputCard').style.display='none';
+  document.querySelector('.examples').style.display='none';
+  document.getElementById('stickyBar').style.display='none';
+  const lw=document.getElementById('loading');lw.classList.add('show');
+
+  const durs=[700,900,800,700,1000,500];
+  const total=durs.reduce((a,b)=>a+b,0);let elapsed=0;
+
+  const animateSteps=async()=>{
+    for(let i=0;i<6;i++){
+      document.getElementById('s'+i).classList.add('active');
+      await delay(durs[i]);elapsed+=durs[i];
+      const pct=Math.round(elapsed/total*100);
+      document.getElementById('progFill').style.width=pct+'%';
+      document.getElementById('loadPct').textContent=pct+'%';
+      document.getElementById('s'+i).classList.remove('active');
+      document.getElementById('s'+i).classList.add('done');
+    }
+  };
+
+  try{
+    const payload=isURL(val)?{text:val}:{text:val};
+    const[_,res]=await Promise.all([
+      animateSteps(),
+      fetch('/analyse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    ]);
+    if(!res.ok){const e=await res.json();throw new Error(e.detail||'API error');}
+    const data=await res.json();
+    lw.classList.remove('show');
+    currentResult=data;
+    renderResults(data);
+    // Haptic on mobile
+    if(navigator.vibrate) navigator.vibrate(80);
+  }catch(e){
+    console.error(e);lw.classList.remove('show');
+    document.getElementById('inputCard').style.display='block';
+    document.querySelector('.examples').style.display='flex';
+    document.getElementById('stickyBar').style.display='block';
+    alert('Analysis failed: '+e.message+'\n\nMake sure the FastAPI server is running at localhost:8000');
+  }
+}
+
+/* ── RENDER RESULTS ── */
+function renderResults(d){
+  const claims=d.claims||[];
+  const tot=Math.max(claims.length,1);
+  const refuted=claims.filter(c=>c.verdict==='refutes').length;
+  const supported=claims.filter(c=>c.verdict==='supports').length;
+  const refPct=Math.round(refuted/tot*100);
+  const supPct=Math.round(supported/tot*100);
+  const conf=Math.round(d.confidence);
+
+  // Determine verdict type including uncertain
+  let verdictType=d.verdict;
+  if(conf<65) verdictType='uncertain';
+
+  const b=document.getElementById('verdictBanner');
+  b.className='verdict '+verdictType;
+
+  const icons={fake:'⚠',real:'✓',uncertain:'?'};
+  const titles={fake:'Likely Misinformation',real:'Likely Authentic',uncertain:'Uncertain'};
+  const subs={
+    fake:'This article shows markers associated with fabricated content.',
+    real:'This article shows patterns consistent with factual reporting.',
+    uncertain:'Insufficient evidence to make a reliable determination — verify manually.'
+  };
+
+  document.getElementById('vIcon').textContent=icons[verdictType];
+  document.getElementById('vTitle').textContent=titles[verdictType];
+  document.getElementById('vReason').textContent=buildReason({...d,verdict:verdictType},claims);
+  document.getElementById('vSub').textContent=subs[verdictType];
+  document.getElementById('vPct').textContent=conf+'%';
+
+  // Confidence tier badge
+  const {label,cls}=getConfidenceTier(conf,refPct,supPct);
+  document.getElementById('tierBadge').innerHTML=
+    `<div class="tier-badge ${cls}"><div class="tier-dot"></div>${label}</div>`;
+
+  // Animate confidence gauge after a tick
+  setTimeout(()=>{
+    document.getElementById('confFill').style.width=conf+'%';
+  },100);
+
+  // Metrics
+  document.getElementById('mClaims').textContent=d.total_claims||claims.length;
+  document.getElementById('mVerified').textContent=claims.length;
+  document.getElementById('mConflict').textContent=(d.conflict_pct!=null?d.conflict_pct:refPct)+'%';
+
+  // Risk bars
+  const rg=document.getElementById('risks');rg.innerHTML='';
+  const neiPct=Math.round(claims.filter(c=>c.verdict==='nei').length/tot*100);
+  [
+    {name:'Refuted by evidence',val:refPct,col:refPct>50?'var(--red)':refPct>25?'var(--amber)':'var(--green)'},
+    {name:'Supported by evidence',val:supPct,col:supPct>50?'var(--green)':supPct>25?'var(--amber)':'var(--red)'},
+    {name:'Unverifiable claims',val:neiPct,col:'var(--amber)'},
+    {name:'BERT confidence',val:conf,col:verdictType==='fake'?'var(--red)':verdictType==='uncertain'?'var(--amber)':'var(--green)'}
+  ].forEach(r=>{
+    rg.innerHTML+=`<div class="risk-row"><div class="risk-bar-wrap"><div class="risk-name">${r.name}</div><div class="risk-bg"><div class="risk-fill" style="background:${r.col}" data-t="${r.val}"></div></div></div><div class="risk-val">${r.val}%</div></div>`;
+  });
+
+  // Claim cards
+  const cl=document.getElementById('claimsList');cl.innerHTML='';
+  document.getElementById('claimCount').textContent=claims.length+' claim'+(claims.length!==1?'s':'');
+
+  if(!claims.length){
+    cl.innerHTML='<p style="font-size:13px;color:var(--muted);padding:8px 0">No verifiable claims could be extracted from this article.</p>';
+  } else {
+    claims.forEach((c,i)=>{
+      const bc=c.verdict==='supports'?'b-sup':c.verdict==='refutes'?'b-ref':'b-nei';
+      const ic=c.verdict==='supports'?'✓':c.verdict==='refutes'?'✗':'~';
+      const lb=c.verdict==='supports'?'SUPPORTS':c.verdict==='refutes'?'REFUTES':'NEI';
+      const sourceLinks=buildSourceLinks(c);
+      cl.innerHTML+=`<div class="claim" style="animation-delay:${i*.07}s">
+        <div>
+          <div class="claim-text">"${c.text}"</div>
+          <div class="claim-ev">${c.evidence||'No evidence found.'}</div>
+          <div class="claim-sources">${sourceLinks}</div>
+        </div>
+        <div class="badge-wrap">
+          <div class="badge-icon">${ic}</div>
+          <div class="badge ${bc}">${lb}</div>
+          <div class="badge-conf">${c.conf}% conf.</div>
+        </div>
+      </div>`;
+    });
+
+    // Swipe dots for mobile
+    if(claims.length>1){
+      const dots=document.getElementById('swipeDots');
+      dots.innerHTML=claims.map((_,i)=>`<div class="swipe-dot${i===0?' active':''}" data-i="${i}"></div>`).join('');
+      cl.addEventListener('scroll',()=>{
+        const idx=Math.round(cl.scrollLeft/(cl.scrollWidth/claims.length));
+        dots.querySelectorAll('.swipe-dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+      },{passive:true});
+    }
+  }
+
+  document.getElementById('results').classList.add('show');
+
+  // Animate risk bars
+  setTimeout(()=>{document.querySelectorAll('.risk-fill').forEach(el=>{el.style.width=el.dataset.t+'%';});},200);
+
+  // Scroll to results
+  setTimeout(()=>{document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});},100);
+}
+
+/* ── SOURCE LINK CHIPS ── */
+function buildSourceLinks(claim){
+  const q=encodeURIComponent(claim.text);
+  return[
+    {label:'📚 Wikipedia',url:`https://en.wikipedia.org/wiki/Special:Search?search=${q}`,title:'Search Wikipedia'},
+    {label:'🔍 Fact Check',url:`https://toolbox.google.com/factcheck/explorer/search/${q}`,title:'Google Fact Check Explorer'},
+    {label:'📰 Google News',url:`https://news.google.com/search?q=${q}&hl=en-GB&gl=GB&ceid=GB:en`,title:'Google News'},
+    {label:'🛡️ Guardian',url:`https://www.theguardian.com/search?q=${q}`,title:'The Guardian'},
+    {label:'📡 Reuters',url:`https://www.reuters.com/site-search/?query=${q}`,title:'Reuters'},
+    {label:'📺 BBC',url:`https://www.bbc.co.uk/search?q=${q}`,title:'BBC News'}
+  ].map(l=>`<a class="claim-source-link" href="${l.url}" target="_blank" rel="noopener noreferrer" title="${l.title}">${l.label}</a>`).join('');
+}
+
+/* ── SHARE RESULT ── */
+function shareResult(){
+  if(!currentResult) return;
+  const conf=Math.round(currentResult.confidence);
+  const verdict=conf<65?'Uncertain':currentResult.verdict==='fake'?'Likely Fake':'Likely Authentic';
+  const text=`VeritAI verdict: ${verdict} (${conf}% confidence)\n\nCheck it yourself at veritai.app`;
+  if(navigator.share){
+    navigator.share({title:'VeritAI Result',text}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(text).then(()=>alert('Result copied to clipboard!')).catch(()=>{});
+  }
+}
+
+/* ── RESET ── */
+function reset(){
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('loading').classList.remove('show');
+  document.getElementById('inputCard').style.display='block';
+  document.querySelector('.examples').style.display='flex';
+  document.getElementById('stickyBar').style.display='block';
+  document.getElementById('articleText').value='';
+  document.getElementById('charCount').textContent='0 words';
+  document.getElementById('wordHint').className='word-hint';
+  document.getElementById('inputTypeBadge').className='input-type-badge';
+  document.getElementById('confFill').style.width='0%';
+  document.querySelectorAll('.step').forEach(el=>el.classList.remove('active','done'));
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('loadPct').textContent='0%';
+  document.getElementById('swipeDots').innerHTML='';
+  currentResult=null;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ── MODALS ── */
+const MODAL_CONTENT={
+  about:`
+    <h2>About VeritAI</h2>
+    <div class="modal-sub">A multi-stage AI fact-checking pipeline</div>
+    <p>VeritAI is an AI-powered fact-checking system that combines fine-tuned transformer models with cross-source verification to detect misinformation in news articles.</p>
+    <h3>How it works</h3>
+    <p>When you submit an article, VeritAI runs a four-stage pipeline:</p>
+    <ul>
+      <li>BERT classification - A fine-tuned BERT model trained on 44,898 articles predicts whether the article is fake or real based on linguistic patterns.</li>
+      <li>Claim extraction — spaCy identifies the most fact-checkable sentences using named entity recognition and verb scoring.</li>
+      <li>Multi-source evidence retrieval — Each claim is queried against four trusted sources: Wikipedia, Google Fact Check, NewsAPI, and The Guardian.</li>
+      <li>NLI verification — RoBERTa-MNLI determines whether each evidence passage supports, refutes, or is neutral towards the claim.</li>
+    </ul>
+    <h3>Why this approach</h3>
+    <p>A single classifier can detect misinformation patterns but cannot verify specific factual claims. By combining classification with retrieval-augmented verification, VeritAI provides both a fast overall verdict and per-claim evidence linked to the original sources.</p>
+    <h3>Built with</h3>
+    <div class="tech-row">
+      <span class="tech-chip">PyTorch</span><span class="tech-chip">Transformers</span><span class="tech-chip">FastAPI</span><span class="tech-chip">spaCy</span><span class="tech-chip">SQLite</span><span class="tech-chip">Docker</span>
+    </div>
+    <p style="font-size:13px;color:var(--muted);font-style:italic;margin-top:24px">An MSc Artificial Intelligence dissertation project at Queen Mary University of London.</p>
+  `,
+  more:`
+    <h2>Project Details</h2>
+    <div class="modal-sub">Technical specifications &amp; methodology</div>
+    <h3>The dataset</h3>
+    <p>The BERT classifier was trained on the ISOT Fake News Dataset - 44,898 articles split between verified real news (Reuters) and known fake news from flagged unreliable sources. Split 70/15/15 for training, validation, and testing.</p>
+    <h3>Model architecture</h3>
+    <ul>
+      <li>Base model - bert-base-uncased with 12 transformer layers and 768 hidden dimensions</li>
+      <li>Classifier head - Linear(768→512) + ReLU + Dropout(0.1) + Linear(512→2) + LogSoftmax</li>
+      <li>Sequence length - 128 tokens (captures headline + opening sentences)</li>
+      <li>Optimiser - AdamW with learning rate 1e-5</li>
+    </ul>
+    <h3>Source weighting</h3>
+    <ul>
+      <li>Google Fact Check (1.5×) - Aggregates PolitiFact, Snopes, Reuters Fact Check, AP, FullFact</li>
+      <li>NewsAPI (1.3×) - Reuters, BBC, AP, NYT, Bloomberg, Guardian, CNN</li>
+      <li>The Guardian (1.2×) - Full article text via official API</li>
+      <li>Wikipedia (1.0×) - Baseline encyclopedic context</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>BERT classification is influenced by writing style, not just factual content</li>
+      <li>NLI models can struggle with implicit reasoning or negation</li>
+      <li>Real-time events may not yet have evidence in any source</li>
+      <li>Sources may have biases affecting coverage of certain topics</li>
+    </ul>
+    <p style="margin-top:20px">VeritAI should be used as a research aid, not as a definitive truth oracle. Always verify important claims by reading the original sources directly.</p>
+  `,
+  contact:`
+    <h2>Get in Touch</h2>
+    <div class="modal-sub">Project author</div>
+    <p>VeritAI was developed as part of an MSc Artificial Intelligence dissertation. For questions about the methodology, model performance, or potential collaborations, please reach out below.</p>
+    <h3>Author</h3>
+    <div class="contact-grid">
+      <div class="contact-item"><div class="contact-label">Name</div><div class="contact-val">Ruturaj Jadhav</div></div>
+      <div class="contact-item"><div class="contact-label">Email</div><div class="contact-val"><a href="mailto:ruturajjadhav5338@gmail.com">ruturajjadhav5338@gmail.com</a></div></div>
+      <div class="contact-item"><div class="contact-label">University</div><div class="contact-val">Queen Mary University of London</div></div>
+      <div class="contact-item"><div class="contact-label">Programme</div><div class="contact-val">MSc Artificial Intelligence</div></div>
+    </div>
+    <h3>Project links</h3>
+    <div class="contact-grid">
+      <div class="contact-item"><div class="contact-label">GitHub</div><div class="contact-val"><a href="https://github.com/Ruturajjadhav35" target="_blank" rel="noopener">github.com/Ruturajjadhav35</a></div></div>
+      <div class="contact-item"><div class="contact-label">LinkedIn</div><div class="contact-val"><a href="https://www.linkedin.com/in/ruturaj-jadhav11/" target="_blank" rel="noopener">linkedin.com/in/ruturaj-jadhav11</a></div></div>
+    </div>
+  `
+};
+
+function openModal(key){
+  document.getElementById('modalContent').innerHTML=MODAL_CONTENT[key]||'';
+  document.getElementById('modalBackdrop').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeModal(event){
+  if(event&&event.target.id!=='modalBackdrop'&&event.type!=='click') return;
+  document.getElementById('modalBackdrop').classList.remove('show');
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+# ── Environment ───────────────────────────────────────────────────────────────
+.env
+*.env
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# ── Database ──────────────────────────────────────────────────────────────────
+# Local SQLite — production DB lives at /data/veritai.db on HF Spaces
+veritai.db
+*.db
+*.sqlite
+
+# ── Model weights — tracked via Git LFS, not regular git ─────────────────────
+# Uncomment below ONLY if you are NOT using Git LFS
+# model/bert_fake_news.pt
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Data files ────────────────────────────────────────────────────────────────
+Fake.csv
+True.csv
+*.csv
+
+# ── Notebook ──────────────────────────────────────────────────────────────────
+*.ipynb
+
+# ── Local data folder ─────────────────────────────────────────────────────────
+data/
