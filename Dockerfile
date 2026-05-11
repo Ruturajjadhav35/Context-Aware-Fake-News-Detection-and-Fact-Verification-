@@ -22,7 +22,7 @@ COPY requirements.txt .
 # ── Install Python dependencies ───────────────────────────────────────────────
 # CPU-only torch keeps image size manageable on free tier
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch==2.4.0 --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt
 
 # ── Download spaCy model ──────────────────────────────────────────────────────

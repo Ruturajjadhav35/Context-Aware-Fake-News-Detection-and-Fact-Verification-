@@ -10,7 +10,7 @@ python-multipart
 httpx
 
 # ── ML & NLP ──────────────────────────────────────────────────────────────────
-transformers
+transformers==4.38.2
 spacy
 # torch installed via CPU wheel in Dockerfile — do NOT add here
 
