@@ -1,3 +1,24 @@
+---
+title: VeritAI
+emoji: 🔍
+colorFrom: red
+colorTo: yellow
+sdk: docker
+pinned: true
+license: mit
+app_port: 7860
+short_description: AI-powered fake news detection and fact verification
+tags:
+  - nlp
+  - bert
+  - fake-news
+  - fact-checking
+  - misinformation
+  - transformers
+  - spacy
+  - roberta
+---
+
 
 
 <div align="center">
