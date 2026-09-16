@@ -13,7 +13,10 @@
 <style>
 
   /* ---------------------------------------------------------------
-     TOKENS
+     TOKENS — same newsroom palette as the flat version, plus a
+     letterpress depth system: cards are "paper on a desk", stamps
+     are physically embossed, everything gets real dimension from
+     light and shadow rather than a generic drop-shadow.
   --------------------------------------------------------------- */
   :root{
     color-scheme: light;
@@ -36,7 +39,11 @@
     --false-tint:   #F3E4E0;
     --mixed-tint:   #F1E6D3;
 
-    --shadow: 0 1px 0 rgba(20,24,27,0.06);
+    /* letterpress depth — light source from upper-left */
+    --emboss-hi:    rgba(255,255,255,0.65);
+    --emboss-lo:    rgba(20,24,27,0.18);
+    --lift-1:       0 1px 1px rgba(20,24,27,.05), 0 3px 6px rgba(20,24,27,.06), 0 10px 18px -6px rgba(20,24,27,.12);
+    --lift-2:       0 2px 2px rgba(20,24,27,.06), 0 10px 18px rgba(20,24,27,.10), 0 26px 46px -12px rgba(20,24,27,.30);
 
     --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
     --font-body:    'Source Serif 4', Georgia, 'Times New Roman', serif;
@@ -62,7 +69,10 @@
       --true-tint:    #14231C;
       --false-tint:   #261815;
       --mixed-tint:   #251F12;
-      --shadow: 0 1px 0 rgba(0,0,0,0.4);
+      --emboss-hi:    rgba(255,255,255,0.10);
+      --emboss-lo:    rgba(0,0,0,0.55);
+      --lift-1:       0 1px 1px rgba(0,0,0,.5), 0 3px 6px rgba(0,0,0,.4), 0 10px 18px -6px rgba(0,0,0,.5);
+      --lift-2:       0 2px 2px rgba(0,0,0,.5), 0 10px 22px rgba(0,0,0,.5), 0 30px 56px -12px rgba(0,0,0,.7);
     }
   }
   :root[data-theme="dark"]{
@@ -81,7 +91,10 @@
     --true-tint:    #14231C;
     --false-tint:   #261815;
     --mixed-tint:   #251F12;
-    --shadow: 0 1px 0 rgba(0,0,0,0.4);
+    --emboss-hi:    rgba(255,255,255,0.10);
+    --emboss-lo:    rgba(0,0,0,0.55);
+    --lift-1:       0 1px 1px rgba(0,0,0,.5), 0 3px 6px rgba(0,0,0,.4), 0 10px 18px -6px rgba(0,0,0,.5);
+    --lift-2:       0 2px 2px rgba(0,0,0,.5), 0 10px 22px rgba(0,0,0,.5), 0 30px 56px -12px rgba(0,0,0,.7);
   }
 
   /* ---------------------------------------------------------------
@@ -102,12 +115,14 @@
   body::before{
     content:"";
     position: fixed;
-    inset: 0;
+    inset: -5% -5%;
     pointer-events: none;
     opacity: .05;
     mix-blend-mode: multiply;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
     z-index: 0;
+    will-change: transform;
+    transform: translateY(var(--grain-shift, 0px));
   }
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) body::before{ opacity:.09; mix-blend-mode: screen; } }
   :root[data-theme="dark"] body::before{ opacity:.09; mix-blend-mode: screen; }
@@ -117,7 +132,7 @@
   a{ color: var(--wire); }
   ::selection{ background: var(--wire); color: var(--paper-lift); }
 
-  a:focus-visible, button:focus-visible, textarea:focus-visible, [tabindex]:focus-visible{
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
     outline: 2px solid var(--wire);
     outline-offset: 3px;
     border-radius: 2px;
@@ -127,7 +142,7 @@
     *{ animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   }
 
-  .wrap{ max-width: 1180px; margin-inline: auto; position: relative; z-index: 1; }
+  .wrap{ max-width: 1180px; margin-inline: auto; position: relative; z-index: 1; perspective: 1600px; }
   .rule{ height: 1px; background: var(--border-strong); border: 0; margin: 0; }
   .rule--thin{ background: var(--border); }
 
@@ -142,7 +157,6 @@
   .btn{
     display: inline-flex;
     align-items: center;
-    justify-content: center;
     gap: .5em;
     font-family: var(--font-mono);
     font-size: .82rem;
@@ -154,14 +168,45 @@
     color: var(--ink);
     cursor: pointer;
     background: transparent;
-    transition: background 160ms ease, color 160ms ease, transform 160ms ease, opacity 160ms ease;
+    transition: background 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
     white-space: nowrap;
   }
-  .btn:hover{ background: var(--ink); color: var(--paper); transform: translateY(-1px); }
+  .btn:hover{ background: var(--ink); color: var(--paper); transform: translateY(-2px); box-shadow: var(--lift-1); }
   .btn--primary{ background: var(--wire); border-color: var(--wire); color: #FBFCFA; }
   .btn--primary:hover{ background: var(--wire-ink); border-color: var(--wire-ink); color: #FBFCFA; }
-  .btn:disabled{ opacity: .5; cursor: progress; transform: none; }
-  .btn--block{ width: 100%; }
+
+  /* ---------------------------------------------------------------
+     3D TILT CARD — the shared "paper lifted off the desk" behavior.
+     JS sets --rx/--ry/--tz on pointer move; CSS renders the tilt.
+  --------------------------------------------------------------- */
+  .tilt{
+    --rx: 0deg; --ry: 0deg; --tz: 0px; --fan: 0deg;
+    position: relative;
+    transform: rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--fan))) translateZ(var(--tz));
+    transform-style: preserve-3d;
+    transition: transform 420ms cubic-bezier(.2,.8,.2,1), box-shadow 420ms ease;
+    box-shadow: var(--lift-1);
+    will-change: transform;
+  }
+  .tilt.is-active{ transition: transform 60ms linear, box-shadow 200ms ease; box-shadow: var(--lift-2); }
+
+  /* paper-stack — a second sheet felt behind the card, its own depth
+     plane so the whole card reads as an object lifted off a stack,
+     not just a flat panel with a shadow underneath. */
+  .paper-stack::before{
+    content:"";
+    position:absolute;
+    inset: 0;
+    background: var(--paper);
+    border: 1px solid var(--border-strong);
+    transform: translateZ(-26px) translate(6px,8px);
+    z-index:-1;
+    opacity:.5;
+    pointer-events:none;
+    transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 420ms ease;
+  }
+  .paper-stack.is-active::before{ transform: translateZ(-46px) translate(11px,14px); opacity:.78; }
+  @media (max-width: 900px){ .paper-stack::before{ display:none; } }
 
   /* ---------------------------------------------------------------
      MASTHEAD
@@ -176,21 +221,60 @@
   .masthead__nav a{ color: var(--ink); text-decoration: none; border-bottom: 1px solid transparent; }
   .masthead__nav a:hover{ border-color: currentColor; }
 
-  .masthead__wordmark{ text-align:center; padding: 6px 0 18px; }
-  .masthead__wordmark h1{ font-size: clamp(2.8rem, 9vw, 6rem); font-style: italic; font-weight: 900; letter-spacing: -0.01em; line-height: .95; }
+  .masthead__wordmark{
+    text-align:center;
+    padding: 6px 0 18px;
+    perspective: 900px;
+  }
+  .masthead__wordmark h1{
+    font-size: clamp(2.8rem, 9vw, 6rem);
+    font-style: italic;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    line-height: .95;
+    display: inline-block;
+    text-shadow:
+      0 1px 0 var(--emboss-hi),
+      0 2px 0 rgba(0,0,0,.04),
+      0 3px 1px rgba(0,0,0,.04),
+      0 5px 10px rgba(0,0,0,.10),
+      0 12px 24px rgba(0,0,0,.10);
+    transform: rotateX(6deg);
+    transition: transform 400ms ease;
+  }
+  .masthead__wordmark:hover h1{ transform: rotateX(0deg) translateZ(6px); }
   .masthead__strap{ font-family: var(--font-mono); font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); margin-top: 10px; }
 
   /* ---------------------------------------------------------------
      HERO
   --------------------------------------------------------------- */
-  .hero{ display: grid; grid-template-columns: 1.1fr 1fr; gap: 3rem; padding-block: 2.6rem 3.2rem; align-items: start; }
+  .hero{ display: grid; grid-template-columns: 1.2fr 1fr; gap: 3rem; padding-block: 2.6rem 3.2rem; align-items: start; }
   .hero h2{ font-size: clamp(1.9rem, 3.4vw, 2.9rem); line-height: 1.08; font-style: italic; }
   .hero__dek{ font-family: var(--font-body); font-size: 1.15rem; color: var(--ink-muted); max-width: 46ch; margin-top: 1.1rem; }
+  .hero__ctas{ display:flex; gap: .8rem; margin-top: 1.8rem; flex-wrap: wrap; }
   .hero__meta{ display:flex; gap: 1.6rem; margin-top: 1.8rem; flex-wrap: wrap; }
   .hero__meta a{ font-family: var(--font-mono); font-size: .82rem; color: var(--ink); text-decoration:none; border-bottom: 1px solid var(--border-strong); }
   .hero__meta a:hover{ border-color: var(--ink); }
 
-  .desk-card{ border: 1px solid var(--border-strong); background: var(--paper-lift); box-shadow: var(--shadow); padding: 1.4rem 1.4rem 1.6rem; }
+  .frontpage-card{
+    --rx: 4deg; --ry: -4deg;
+    border: 1px solid var(--border-strong);
+    background: var(--paper-lift);
+    padding: 1.4rem 1.4rem 1.6rem;
+  }
+  .frontpage-card__label{
+    display:flex; justify-content: space-between; align-items:center;
+    font-family: var(--font-mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted);
+    padding-bottom: .8rem; margin-bottom: .9rem; border-bottom: 1px solid var(--border);
+  }
+  .frontpage-card__claim{ font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 1.18rem; line-height: 1.35; }
+  .frontpage-card__foot{ display:flex; justify-content: space-between; align-items:center; margin-top: 1.1rem; }
+
+  /* ---------------------------------------------------------------
+     DESK CARD — the live verification console (replaces the static
+     frontpage-card once the page is wired to a real /analyse route).
+  --------------------------------------------------------------- */
+  .desk-card{ --rx: 3deg; --ry: -3deg; border: 1px solid var(--border-strong); background: var(--paper-lift); padding: 1.4rem 1.4rem 1.6rem; }
   .desk-card__label{ display:flex; justify-content: space-between; align-items:center; font-family: var(--font-mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); padding-bottom: .8rem; margin-bottom: .9rem; border-bottom: 1px solid var(--border); }
   .desk-card textarea{
     width: 100%; min-height: 7.5rem; resize: vertical;
@@ -198,29 +282,47 @@
     color: var(--ink); background: var(--paper); border: 1px solid var(--border); padding: .8rem .9rem;
   }
   .desk-card textarea:focus-visible{ outline: 2px solid var(--wire); outline-offset: 1px; }
-  .desk-card__actions{ display:flex; justify-content: space-between; align-items:center; gap: 1rem; margin-top: .9rem; }
+  .desk-card__actions{ display:flex; justify-content: space-between; align-items:center; gap: 1rem; margin-top: .9rem; flex-wrap:wrap; }
   .desk-card__hint{ font-family: var(--font-mono); font-size: .72rem; color: var(--ink-muted); }
+  .btn:disabled{ opacity:.5; cursor:progress; transform:none; }
 
   .verify-out{ margin-top: 1.2rem; }
   .verify-out__label{ font-family: var(--font-mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: .7rem; }
   .verify-out[data-state="idle"] .verify-out__label::after{ content:" — example"; }
   .verify-out[data-state="live"] .verify-out__label::after{ content:" — your submission"; color: var(--wire); }
-
   .verdict-row{ display:flex; align-items:center; gap: 1rem; flex-wrap: wrap; }
-  .confidence{ font-family: var(--font-mono); font-size: .82rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
-  .confidence b{ color: var(--ink); }
-
   .pipeline-strip{ display:flex; gap: .5rem; margin: 1rem 0; flex-wrap: wrap; }
   .pipeline-strip span{ font-family: var(--font-mono); font-size: .66rem; letter-spacing: .05em; text-transform: uppercase; padding: .3em .6em; border: 1px solid var(--border); color: var(--ink-muted); }
   .pipeline-strip span.on{ color: var(--wire); border-color: var(--wire); }
   .pipeline-strip span.done{ color: var(--ink); border-color: var(--border-strong); }
-
   .error-box{ border: 1px solid var(--false); background: var(--false-tint); color: var(--false); font-family: var(--font-mono); font-size: .82rem; padding: .8rem .9rem; margin-top: 1rem; }
+  .claim-block + .claim-block{ margin-top: 1.4rem; padding-top: 1.4rem; border-top: 1px solid var(--border); }
 
   /* ---------------------------------------------------------------
-     STAMP
+     STAMP — physically pressed into the paper
   --------------------------------------------------------------- */
-  .stamp{ position: relative; display: inline-flex; align-items: center; gap: .45em; font-family: var(--font-mono); font-weight: 600; font-size: .74rem; letter-spacing: .09em; text-transform: uppercase; padding: .45em .75em; border: 2.5px double currentColor; transform: rotate(-3deg); white-space: nowrap; }
+  .stamp{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: .45em;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: .74rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    padding: .45em .75em;
+    border: 2.5px double currentColor;
+    transform: rotate(-3deg) translateZ(14px);
+    white-space: nowrap;
+    box-shadow:
+      inset 0 1px 0 var(--emboss-hi),
+      inset 0 -2px 3px var(--emboss-lo),
+      0 3px 6px rgba(0,0,0,.14),
+      0 8px 16px -6px rgba(0,0,0,.18);
+    transition: transform 300ms ease, box-shadow 300ms ease;
+  }
+  .tilt.is-active .stamp{ transform: rotate(-3deg) translateZ(30px); }
   .stamp--true{ color: var(--true); background: var(--true-tint); }
   .stamp--false{ color: var(--false); background: var(--false-tint); }
   .stamp--mixed{ color: var(--mixed); background: var(--mixed-tint); }
@@ -239,43 +341,63 @@
      WIRE / EXAMPLES
   --------------------------------------------------------------- */
   .wire-tabs{ display:flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
-  .wire-tab{ font-family: var(--font-mono); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; padding: .6em 1em; border: 1px solid var(--border-strong); background: transparent; color: var(--ink-muted); cursor: pointer; transition: background 150ms ease, color 150ms ease, border-color 150ms ease; }
-  .wire-tab[aria-selected="true"]{ background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .wire-tab{
+    font-family: var(--font-mono); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase;
+    padding: .6em 1em; border: 1px solid var(--border-strong); background: transparent; color: var(--ink-muted);
+    cursor: pointer; transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 150ms ease;
+  }
+  .wire-tab[aria-selected="true"]{ background: var(--ink); border-color: var(--ink); color: var(--paper); transform: translateY(-2px); }
   .wire-tab:hover:not([aria-selected="true"]){ border-color: var(--ink); color: var(--ink); }
 
   .wire-panel{ display:none; }
-  .wire-panel[data-active]{ display: grid; grid-template-columns: 1.3fr 1fr; gap: 2.4rem; border: 1px solid var(--border); background: var(--paper-lift); box-shadow: var(--shadow); padding: 1.8rem; }
+  .wire-panel[data-active]{ display: grid; grid-template-columns: 1.3fr 1fr; gap: 2.4rem; border: 1px solid var(--border); background: var(--paper-lift); padding: 1.8rem; }
   @media (max-width: 860px){ .wire-panel[data-active]{ grid-template-columns: 1fr; } }
 
   .wire-panel__claim{ font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: 1.5rem; line-height: 1.32; }
   .wire-panel__meta{ display:flex; align-items:center; gap: 1rem; margin-top: 1.3rem; flex-wrap: wrap; }
+  .confidence{ font-family: var(--font-mono); font-size: .82rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .confidence b{ color: var(--ink); }
 
-  .sources-list{ list-style:none; margin: 1.4rem 0 0; padding: 0; display:flex; flex-direction: column; gap: .55rem; }
-  .sources-list li{ display:flex; justify-content: space-between; align-items:center; gap:1rem; padding: .55rem .7rem; border: 1px solid var(--border); font-size: .85rem; }
+  .sources-list{ list-style:none; margin: 1.4rem 0 0; padding: 0; display:flex; flex-direction: column; gap: .55rem; transform-style: preserve-3d; }
+  .sources-list li{
+    display:flex; justify-content: space-between; align-items:center; gap:1rem; padding: .55rem .7rem;
+    border: 1px solid var(--border); font-size: .85rem; background: var(--paper);
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  }
+  .sources-list li:hover{ transform: translateZ(10px); box-shadow: var(--lift-1); border-color: var(--border-strong); }
   .src-name{ font-family: var(--font-mono); }
   .src-tag{ font-family: var(--font-mono); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; padding: .2em .55em; }
   .src-tag--supports{ color: var(--true); background: var(--true-tint); }
   .src-tag--contradicts{ color: var(--false); background: var(--false-tint); }
   .src-tag--neutral{ color: var(--ink-muted); background: var(--paper); border: 1px solid var(--border); }
 
-  .claim-block + .claim-block{ margin-top: 1.4rem; padding-top: 1.4rem; border-top: 1px solid var(--border); }
+  .wire-cta{ margin-top: 1.6rem; }
 
   /* ---------------------------------------------------------------
-     PIPELINE
+     PIPELINE — a fanned stack of cards, each tilts independently
   --------------------------------------------------------------- */
-  .pipeline{ display:grid; grid-template-columns: repeat(4,1fr); gap: 0; border-top: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); }
-  .stage{ padding: 1.6rem 1.5rem; border-right: 1px solid var(--border); position: relative; }
-  .stage:last-child{ border-right: 0; }
+  .pipeline{ display:grid; grid-template-columns: repeat(4,1fr); gap: 1.1rem; padding-block: .5rem; perspective: 1400px; }
+  .stage{ padding: 1.6rem 1.5rem; background: var(--paper-lift); border: 1px solid var(--border); }
+  .stage:nth-child(1){ --fan: -5deg; }
+  .stage:nth-child(2){ --fan: -1.6deg; }
+  .stage:nth-child(3){ --fan: 1.6deg; }
+  .stage:nth-child(4){ --fan: 5deg; }
+  .stage.is-active{ --fan: 0deg; }
+
   .stage__tag{ font-family: var(--font-mono); font-size: .7rem; letter-spacing: .08em; color: var(--wire); }
   .stage__title{ font-family: var(--font-display); font-weight: 900; font-size: 1.18rem; margin-top: .5rem; }
   .stage__body{ font-size: .88rem; color: var(--ink-muted); margin-top: .6rem; line-height: 1.55; }
-  @media (max-width: 900px){ .pipeline{ grid-template-columns: 1fr; border-top:0; } .stage{ border-right:0; border-bottom: 1px solid var(--border); } }
+
+  @media (max-width: 900px){
+    .pipeline{ grid-template-columns: 1fr; }
+    .stage{ transform:none !important; }
+  }
 
   /* ---------------------------------------------------------------
      SOURCES CREDENTIALS
   --------------------------------------------------------------- */
-  .creds{ display:grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
-  .cred{ background: var(--paper-lift); padding: 1.3rem 1.2rem; }
+  .creds{ display:grid; grid-template-columns: repeat(4,1fr); gap: 1.1rem; perspective: 1200px; }
+  .cred{ background: var(--paper-lift); border: 1px solid var(--border); padding: 1.3rem 1.2rem; }
   .cred__name{ font-family: var(--font-mono); font-size: .85rem; font-weight: 600; letter-spacing: .02em; }
   .cred__desc{ font-size: .85rem; color: var(--ink-muted); margin-top: .5rem; line-height: 1.5; }
   @media (max-width: 860px){ .creds{ grid-template-columns: 1fr 1fr; } }
@@ -284,17 +406,24 @@
   /* ---------------------------------------------------------------
      STACK STRIP
   --------------------------------------------------------------- */
-  .stack-strip{ font-family: var(--font-mono); font-size: .86rem; letter-spacing: .02em; color: var(--ink-muted); display:flex; flex-wrap:wrap; gap: .5rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding-block: 1.1rem; }
+  .stack-strip{
+    font-family: var(--font-mono); font-size: .86rem; letter-spacing: .02em; color: var(--ink-muted);
+    display:flex; flex-wrap:wrap; gap: .5rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding-block: 1.1rem;
+  }
   .stack-strip span:not(.sep){ color: var(--ink); }
   .sep{ margin: 0 .7rem; color: var(--border-strong); }
 
   /* ---------------------------------------------------------------
-     STATS
+     STATS — extruded, letterpress-embossed numerals
   --------------------------------------------------------------- */
-  .stats{ display:grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
-  .stat{ background: var(--paper-lift); padding: 2rem 1.2rem; text-align:center; }
-  .stat__num{ font-family: var(--font-display); font-weight: 900; font-size: clamp(1.9rem,3.4vw,2.8rem); font-variant-numeric: tabular-nums; color: var(--wire); line-height:1; }
-  .stat__label{ font-family: var(--font-mono); font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-muted); margin-top: .7rem; }
+  .stats{ display:grid; grid-template-columns: repeat(4,1fr); gap: 1.1rem; perspective: 1000px; }
+  .stat{ background: var(--paper-lift); border: 1px solid var(--border); padding: 2rem 1.2rem; text-align:center; }
+  .stat__num{
+    font-family: var(--font-display); font-weight: 900; font-size: clamp(1.9rem,3.4vw,2.8rem); font-variant-numeric: tabular-nums;
+    color: var(--wire); line-height:1;
+    text-shadow: 0 1px 0 var(--emboss-hi), 0 3px 1px rgba(0,0,0,.05), 0 6px 14px rgba(0,0,0,.14);
+  }
+  .stat__label{ font-family: var(--font-mono); font-size: .74rem; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-muted); margin-top: .7rem; }
   @media (max-width: 860px){ .stats{ grid-template-columns: 1fr 1fr; } }
   @media (max-width: 480px){ .stats{ grid-template-columns: 1fr; } }
 
@@ -310,14 +439,231 @@
   .colophon__status{ margin-top: 1rem; font-family: var(--font-mono); font-size: .76rem; color: var(--ink-muted); }
   .colophon__status b{ color: var(--ink); }
 
+  /* ---------------------------------------------------------------
+     READER GATE — subtle sign-in / create-account screen shown
+     before the desk. Same masthead language, kept quiet and clean:
+     no stamps, no fanning, just one steady card.
+  --------------------------------------------------------------- */
+  .gate{ display:grid; grid-template-columns: 1.05fr .95fr; gap: 3.4rem; align-items:center; padding-block: 3.2rem 4.4rem; perspective: 1400px; }
+  .gate__intro h2{ font-size: clamp(1.8rem, 3.2vw, 2.5rem); font-style: italic; margin-top: .5rem; }
+  .gate__intro .hero__dek{ margin-top: 1rem; }
+  .gate__intro ul{ list-style:none; margin: 1.6rem 0 0; padding:0; display:flex; flex-direction:column; gap:.6rem; }
+  .gate__intro li{ font-family: var(--font-mono); font-size: .82rem; color: var(--ink-muted); padding-left: 1.3em; position:relative; }
+  .gate__intro li::before{ content:"\2014"; position:absolute; left:0; color: var(--border-strong); }
+
+  .gate-card{
+    background: var(--paper-lift);
+    border: 1px solid var(--border-strong);
+    padding: 2.1rem 2.2rem 2.3rem;
+    --tz: 0px;
+  }
+  .gate-tabs{ display:flex; gap:.4rem; margin-bottom: 1.7rem; }
+  .gate-tab{
+    flex:1; font-family: var(--font-mono); font-size:.74rem; letter-spacing:.05em; text-transform:uppercase;
+    padding:.7em 1em; border:1px solid var(--border-strong); background:transparent; color:var(--ink-muted);
+    cursor:pointer; transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+  }
+  .gate-tab[aria-selected="true"]{ background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .gate-tab:hover:not([aria-selected="true"]){ border-color: var(--ink); color: var(--ink); }
+
+  .field{ display:block; margin-bottom: 1.15rem; }
+  .field[hidden]{ display:none; }
+  .field--check{ display:flex; gap:.65rem; align-items:flex-start; margin-bottom: 1.3rem; }
+  .field--check[hidden]{ display:none; }
+  .field--check input{ margin-top:.25rem; flex:none; width:15px; height:15px; accent-color: var(--wire); }
+  .field--check span{ font-size:.82rem; line-height:1.5; color: var(--ink-muted); }
+  .field--check a{ color: var(--ink-muted); text-decoration: underline; text-underline-offset: 2px; }
+  .field--check a:hover{ color: var(--ink); }
+  .field__label{ display:block; font-family: var(--font-mono); font-size:.68rem; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:.45rem; }
+  .field input{
+    width:100%; font-family: var(--font-body); font-size: 1rem; padding: .68em .8em;
+    border: 1px solid var(--border-strong); background: var(--paper); color: var(--ink);
+  }
+  .field input::placeholder{ color: var(--ink-muted); opacity:.6; }
+
+  .gate__error{
+    font-family: var(--font-mono); font-size: .78rem; color: var(--false);
+    background: var(--false-tint); border: 1px solid var(--false); padding: .6em .8em; margin-bottom: 1.1rem;
+  }
+  .gate__submit{ width:100%; justify-content:center; margin-top: .3rem; }
+  .gate__skip{
+    display:block; width:100%; text-align:center; margin-top: 1.2rem; padding:.4em;
+    background:none; border:none; font-family: var(--font-mono); font-size:.76rem; letter-spacing:.02em;
+    color: var(--ink-muted); text-decoration: underline; text-underline-offset: 3px; cursor:pointer;
+  }
+  .gate__skip:hover{ color: var(--ink); }
+  .gate-datamin{ font-family: var(--font-mono); font-size:.68rem; color: var(--ink-muted); text-align:center; margin-top: 1.2rem; line-height:1.5; }
+  .gate-note{ text-align:center; padding-block: .5rem 2rem; }
+  .gate-note p{ font-family: var(--font-mono); font-size: .72rem; color: var(--ink-muted); max-width: 56ch; margin-inline:auto; }
+  .legal-links{
+    display:flex; justify-content:center; flex-wrap:wrap; gap: .5rem 1.1rem;
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing:.03em; text-transform:uppercase;
+    padding-block: .6rem 3rem; border-top: 1px solid var(--border); margin-top: 1.2rem;
+  }
+  .legal-links button, .legal-links a{
+    background:none; border:none; padding:0; color: var(--ink-muted); cursor:pointer;
+    font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .legal-links button:hover, .legal-links a:hover{ color: var(--ink); }
+
+  @media (max-width: 860px){ .gate{ grid-template-columns: 1fr; } }
+
   @media (max-width: 900px){
     .hero{ grid-template-columns: 1fr; }
     .masthead__top{ flex-direction: column; align-items:flex-start; gap:.6rem; }
+    .tilt{ transform: none !important; }
   }
+
+  /* ---------------------------------------------------------------
+     LEGAL READER — full-screen overlay for Privacy / Cookie / Terms.
+     Same paper-and-rule language as the rest of the desk.
+  --------------------------------------------------------------- */
+  .legal-overlay{
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(20,24,27,.5);
+    display:flex; justify-content:center; align-items:flex-start;
+    padding: 4vh 20px; overflow-y:auto;
+  }
+  .legal-overlay[hidden]{ display:none; }
+  .legal-panel{
+    background: var(--paper); border: 1px solid var(--border-strong);
+    max-width: 760px; width:100%; margin-block: 0 6vh; box-shadow: var(--lift-2);
+  }
+  .legal-panel__head{
+    display:flex; justify-content:space-between; align-items:center; gap:1rem;
+    padding: 1.2rem 1.6rem; border-bottom: 3px double var(--border-strong);
+    position: sticky; top:0; background: var(--paper); z-index:1;
+  }
+  .legal-close{
+    font-family: var(--font-mono); font-size:.74rem; letter-spacing:.05em; text-transform:uppercase;
+    background:none; border:1px solid var(--border-strong); padding:.55em .9em; cursor:pointer; color:var(--ink);
+    white-space:nowrap;
+  }
+  .legal-close:hover{ background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .legal-doc{ padding: 1.8rem 1.8rem 3rem; }
+  .legal-doc[hidden]{ display:none; }
+  .legal-doc h2{ font-style: italic; font-size: clamp(1.5rem, 3vw, 2rem); }
+  .legal-doc .legal-meta{ font-family: var(--font-mono); font-size:.7rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing:.06em; margin-top:.6rem; }
+  .legal-doc h3{ font-size: 1.08rem; margin-top: 1.9rem; font-style: italic; }
+  .legal-doc p{ margin-top: .85rem; font-size:.93rem; line-height:1.65; color: var(--ink); }
+  .legal-doc ul{ margin-top:.7rem; padding-left: 1.2rem; }
+  .legal-doc li{ font-size:.93rem; line-height:1.6; margin-top:.4rem; color: var(--ink); }
+  .legal-doc table{ width:100%; border-collapse:collapse; margin-top: 1.1rem; font-size:.82rem; }
+  .legal-doc th, .legal-doc td{ border:1px solid var(--border); padding:.55em .65em; text-align:left; vertical-align:top; }
+  .legal-doc th{ font-family: var(--font-mono); font-size:.66rem; text-transform:uppercase; letter-spacing:.05em; background: var(--paper-lift); }
+  .legal-doc a{ color: var(--wire); text-decoration: underline; text-underline-offset: 2px; }
+  .legal-doc strong{ font-weight: 700; }
+
+  /* ---------------------------------------------------------------
+     COOKIE CONSENT — bottom banner + preferences panel
+  --------------------------------------------------------------- */
+  .cookie-banner{
+    position: fixed; left:0; right:0; bottom:0; z-index: 90;
+    background: var(--paper-lift); border-top: 3px double var(--border-strong); box-shadow: var(--lift-2);
+  }
+  .cookie-banner[hidden]{ display:none; }
+  .cookie-banner__inner{
+    max-width: 1180px; margin-inline:auto; padding: 1.2rem var(--gutter) 1.4rem;
+    display:flex; gap: 1.6rem 2rem; align-items:center; flex-wrap:wrap;
+  }
+  .cookie-banner__text{ flex: 1 1 360px; }
+  .cookie-banner__text p{ font-size:.86rem; color: var(--ink-muted); margin-top:.35rem; max-width: 62ch; }
+  .cookie-banner__actions{ display:flex; gap:.6rem; flex-wrap:wrap; }
+
+  .prefs-panel{ max-width: 480px; }
+  .pref-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; padding: 1.1rem 0; border-bottom: 1px solid var(--border); }
+  .pref-row:last-of-type{ border-bottom:none; }
+  .pref-row__label{ font-family: var(--font-mono); font-size:.76rem; text-transform:uppercase; letter-spacing:.05em; }
+  .pref-row__desc{ font-size:.82rem; color: var(--ink-muted); margin-top:.4rem; max-width: 36ch; line-height:1.5; }
+  .switch{ position:relative; width:42px; height:24px; flex:none; display:inline-block; }
+  .switch input{ position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; }
+  .switch input:disabled{ cursor:not-allowed; }
+  .switch__track{ position:absolute; inset:0; background: var(--border-strong); border-radius:999px; transition: background 160ms ease; pointer-events:none; }
+  .switch__thumb{ position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background: var(--paper); box-shadow: var(--lift-1); transition: transform 160ms ease; }
+  .switch input:checked ~ .switch__track{ background: var(--wire); }
+  .switch input:checked ~ .switch__track .switch__thumb{ transform: translateX(18px); }
+  .switch input:disabled ~ .switch__track{ opacity:.55; }
+  .prefs-save{ width:100%; justify-content:center; margin-top: 1.4rem; }
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="wrap" id="gateWrap">
+
+  <header class="masthead">
+    <div class="masthead__top">
+      <span class="masthead__dateline">London, UK &mdash; Reader Access</span>
+    </div>
+    <hr class="rule">
+    <div class="masthead__wordmark">
+      <h1>VeritAI</h1>
+      <div class="masthead__strap">Claim In &nbsp;&middot;&nbsp; Evidence Weighed &nbsp;&middot;&nbsp; Verdict Out</div>
+    </div>
+    <hr class="rule">
+  </header>
+
+  <section class="gate">
+    <div class="gate__intro">
+      <span class="eyebrow">Reader Registration</span>
+      <h2>Press credentials, please.</h2>
+      <p class="hero__dek">A quick account keeps a record of what you&rsquo;ve checked on this desk. Sign back in, or set up access in a few seconds.</p>
+      <ul>
+        <li>Nothing is shared or published</li>
+        <li>Preview only &mdash; not yet wired to the server</li>
+        <li>No account needed to keep browsing</li>
+      </ul>
+    </div>
+
+    <div class="gate-card tilt paper-stack" data-tilt data-tilt-max="5">
+      <div class="gate-tabs" role="tablist" aria-label="Sign in or create an account">
+        <button class="gate-tab" type="button" id="gtab-in" role="tab" aria-selected="true">Sign In</button>
+        <button class="gate-tab" type="button" id="gtab-up" role="tab" aria-selected="false">Create Account</button>
+      </div>
+
+      <form id="gateForm" novalidate>
+        <label class="field">
+          <span class="field__label">Username</span>
+          <input type="text" id="gateUsername" name="username" autocomplete="username" placeholder="e.g. r.jadhav" required>
+        </label>
+        <label class="field">
+          <span class="field__label" id="passwordLabel">Password</span>
+          <input type="password" id="gatePassword" name="password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required minlength="6">
+        </label>
+        <label class="field" id="confirmField" hidden>
+          <span class="field__label">Confirm password</span>
+          <input type="password" id="gateConfirm" name="confirm" autocomplete="new-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" minlength="6">
+        </label>
+
+        <label class="field field--check" id="ageField" hidden>
+          <input type="checkbox" id="gateAge" name="age-confirm">
+          <span>I confirm I am at least 16 years old and agree to the <button type="button" data-legal="terms">Terms of Service</button> and <button type="button" data-legal="privacy">Privacy Policy</button>.</span>
+        </label>
+
+        <div class="gate__error" id="gateError" hidden></div>
+
+        <button type="submit" class="btn btn--primary gate__submit" id="gateSubmit">Enter the Desk &rarr;</button>
+      </form>
+
+      <button class="gate__skip" type="button" id="gateSkip">Continue without an account &rarr;</button>
+      <p class="gate-datamin">We only ever ask for a username and password here &mdash; no email or phone number needed to preview the desk.</p>
+    </div>
+  </section>
+
+  <div class="gate-note">
+    <p>Demo access only &mdash; usernames and passwords entered here stay in this browser tab for preview purposes and are not sent anywhere or stored on a server yet.</p>
+  </div>
+
+  <div class="legal-links">
+    <button type="button" data-legal="privacy">Privacy Policy</button>
+    <button type="button" data-legal="cookies">Cookie Policy</button>
+    <button type="button" data-legal="terms">Terms of Service</button>
+    <button type="button" id="cookieSettingsLink1">Cookie Settings</button>
+  </div>
+
+</div>
+
+<div class="wrap" id="siteWrap" hidden>
 
   <header class="masthead">
     <div class="masthead__top">
@@ -340,14 +686,14 @@
     <div>
       <span class="eyebrow">Lead Story</span>
       <h2>A newsroom desk for claims nobody has fact&#8209;checked yet.</h2>
-      <p class="hero__dek">Paste an article, a paragraph, or a single claim below. VeritAI extracts the checkable assertion, screens it with BERT, pulls evidence from four independent feeds, and weighs it with a RoBERTa&#8209;MNLI verdict &mdash; live, against the model running this page.</p>
+      <p class="hero__dek">Paste an article, a paragraph, or a single claim into the desk. VeritAI extracts the checkable assertion, screens it with BERT, pulls evidence from four independent feeds, and weighs it with a RoBERTa&#8209;MNLI verdict &mdash; live, against the model running this page.</p>
       <div class="hero__meta">
         <a href="#pipeline">See the pipeline &darr;</a>
         <a href="#wire">Read sample dispatches &darr;</a>
       </div>
     </div>
 
-    <div class="desk-card">
+    <div class="desk-card tilt paper-stack" data-tilt data-tilt-max="6">
       <div class="desk-card__label">
         <span>Submit To The Wire</span>
         <span id="statTag">01</span>
@@ -388,7 +734,7 @@
         <span class="eyebrow">On The Wire</span>
         <h2>Three claims, run end to end</h2>
       </div>
-      <p class="section__note">Curated dispatches, kept for reference &mdash; use the desk above to run your own text through the live pipeline.</p>
+      <p class="section__note">Sample dispatches from the pipeline &mdash; illustrative runs, not live queries. Bring your own claim to the app for a real verdict.</p>
     </div>
 
     <div class="wire-tabs" role="tablist" aria-label="Example verifications">
@@ -397,14 +743,15 @@
       <button class="wire-tab" role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false">03 &middot; Napoleon&rsquo;s Height</button>
     </div>
 
-    <div class="wire-panel" id="panel-0" role="tabpanel" aria-labelledby="tab-0" data-active>
+    <div class="wire-panel tilt paper-stack" data-tilt data-tilt-max="8" id="panel-0" role="tabpanel" aria-labelledby="tab-0" data-active>
       <div>
         <p class="wire-panel__claim">&ldquo;The Great Wall of China is visible from space with the naked eye.&rdquo;</p>
         <div class="wire-panel__meta">
           <span class="stamp stamp--false"><span class="stamp__dot"></span>False</span>
           <span class="confidence">confidence <b>93%</b></span>
         </div>
-        <p style="margin-top:1.1rem; font-size:.95rem; color:var(--ink-muted);">Multiple astronauts and NASA have stated the wall is not distinguishable from low Earth orbit without aid; the belief predates spaceflight by over a century.</p>
+        <p class="hero__dek" style="margin-top:1.1rem; font-size:.95rem;">Multiple astronauts and NASA have stated the wall is not distinguishable from low Earth orbit without aid; the belief predates spaceflight by over a century.</p>
+        <div class="wire-cta"><button class="btn" type="button" data-try-claim="The Great Wall of China is visible from space with the naked eye.">Run a claim like this &rarr;</button></div>
       </div>
       <ul class="sources-list">
         <li><span class="src-name">Wikipedia</span><span class="src-tag src-tag--contradicts">Contradicts</span></li>
@@ -414,14 +761,15 @@
       </ul>
     </div>
 
-    <div class="wire-panel" id="panel-1" role="tabpanel" aria-labelledby="tab-1">
+    <div class="wire-panel tilt paper-stack" data-tilt data-tilt-max="8" id="panel-1" role="tabpanel" aria-labelledby="tab-1">
       <div>
         <p class="wire-panel__claim">&ldquo;The WHO declared the COVID&#8209;19 outbreak a Public Health Emergency of International Concern on 30 January 2020.&rdquo;</p>
         <div class="wire-panel__meta">
           <span class="stamp stamp--true"><span class="stamp__dot"></span>True</span>
           <span class="confidence">confidence <b>97%</b></span>
         </div>
-        <p style="margin-top:1.1rem; font-size:.95rem; color:var(--ink-muted);">Dated, on&#8209;record, and corroborated across every independent source the pipeline queried &mdash; a high&#8209;agreement case.</p>
+        <p class="hero__dek" style="margin-top:1.1rem; font-size:.95rem;">Dated, on&#8209;record, and corroborated across every independent source the pipeline queried &mdash; a high&#8209;agreement case.</p>
+        <div class="wire-cta"><button class="btn" type="button" data-try-claim="The WHO declared the COVID-19 outbreak a Public Health Emergency of International Concern on 30 January 2020.">Run a claim like this &rarr;</button></div>
       </div>
       <ul class="sources-list">
         <li><span class="src-name">Wikipedia</span><span class="src-tag src-tag--supports">Supports</span></li>
@@ -431,14 +779,15 @@
       </ul>
     </div>
 
-    <div class="wire-panel" id="panel-2" role="tabpanel" aria-labelledby="tab-2">
+    <div class="wire-panel tilt paper-stack" data-tilt data-tilt-max="8" id="panel-2" role="tabpanel" aria-labelledby="tab-2">
       <div>
         <p class="wire-panel__claim">&ldquo;Napoleon Bonaparte was unusually short, standing around 5 feet tall.&rdquo;</p>
         <div class="wire-panel__meta">
           <span class="stamp stamp--mixed"><span class="stamp__dot"></span>Misleading</span>
           <span class="confidence">confidence <b>88%</b></span>
         </div>
-        <p style="margin-top:1.1rem; font-size:.95rem; color:var(--ink-muted);">Napoleon stood roughly 5&#8242;7&Prime; &mdash; about average for his era. The myth traces to a conversion error between French and English measurement units.</p>
+        <p class="hero__dek" style="margin-top:1.1rem; font-size:.95rem;">Napoleon stood roughly 5&#8242;7&Prime; &mdash; about average for his era. The myth traces to a conversion error between French and English measurement units.</p>
+        <div class="wire-cta"><button class="btn" type="button" data-try-claim="Napoleon Bonaparte was unusually short, standing around 5 feet tall.">Run a claim like this &rarr;</button></div>
       </div>
       <ul class="sources-list">
         <li><span class="src-name">Wikipedia</span><span class="src-tag src-tag--contradicts">Contradicts</span></li>
@@ -457,29 +806,29 @@
         <span class="eyebrow">How The Desk Works</span>
         <h2>Four stages, one wire</h2>
       </div>
-      <p class="section__note">Every claim you submit above travels this same route, start to verdict.</p>
+      <p class="section__note">Every claim travels the same route, start to verdict &mdash; hover a card to square it up.</p>
     </div>
 
     <div class="pipeline">
-      <div class="stage">
+      <div class="stage tilt paper-stack" data-tilt data-tilt-max="7">
         <div class="stage__tag">STAGE 01 &mdash; EXTRACT</div>
         <div class="stage__title">Claim extraction</div>
         <p class="stage__body">spaCy&rsquo;s dependency parser isolates the checkable factual assertion inside a longer passage, discarding opinion, hedged language, and rhetorical framing.</p>
       </div>
-      <div class="stage">
+      <div class="stage tilt paper-stack" data-tilt data-tilt-max="7">
         <div class="stage__tag">STAGE 02 &mdash; SCREEN</div>
         <div class="stage__title">BERT classification</div>
         <p class="stage__body">A BERT model fine&#8209;tuned on the ISOT fake&#8209;news corpus gives the claim a first&#8209;pass credibility score &mdash; 92% accuracy on held&#8209;out test data.</p>
       </div>
-      <div class="stage">
+      <div class="stage tilt paper-stack" data-tilt data-tilt-max="7">
         <div class="stage__tag">STAGE 03 &mdash; RETRIEVE</div>
         <div class="stage__title">Evidence retrieval</div>
         <p class="stage__body">The claim is queried against Google Fact Check Tools, NewsAPI, The Guardian Open Platform, and Wikipedia to pull independent, citable evidence.</p>
       </div>
-      <div class="stage">
+      <div class="stage tilt paper-stack" data-tilt data-tilt-max="7">
         <div class="stage__tag">STAGE 04 &mdash; VERIFY</div>
         <div class="stage__title">RoBERTa&#8209;MNLI verdict</div>
-        <p class="stage__body">A RoBERTa model fine&#8209;tuned on MNLI checks each passage against the claim for entailment, contradiction, or neutrality; votes are weighted by source into one verdict.</p>
+        <p class="stage__body">A RoBERTa model fine&#8209;tuned on MNLI checks each retrieved passage against the claim for entailment, contradiction, or neutrality; votes are weighted by source and combined into a final verdict.</p>
       </div>
     </div>
   </section>
@@ -495,10 +844,22 @@
       <p class="section__note">Four independent feeds, queried on every run &mdash; no single source decides a verdict alone.</p>
     </div>
     <div class="creds">
-      <div class="cred"><div class="cred__name">Google Fact Check Tools</div><p class="cred__desc">Published ratings from professional fact&#8209;checking organisations worldwide.</p></div>
-      <div class="cred"><div class="cred__name">NewsAPI</div><p class="cred__desc">Current and archival coverage across mainstream news outlets.</p></div>
-      <div class="cred"><div class="cred__name">The Guardian Open Platform</div><p class="cred__desc">Full-text reporting and archives from The Guardian&rsquo;s own database.</p></div>
-      <div class="cred"><div class="cred__name">Wikipedia</div><p class="cred__desc">Community&#8209;maintained reference entries, used for background and consensus fact.</p></div>
+      <div class="cred tilt paper-stack" data-tilt data-tilt-max="9">
+        <div class="cred__name">Google Fact Check Tools</div>
+        <p class="cred__desc">Published ratings from professional fact&#8209;checking organisations worldwide.</p>
+      </div>
+      <div class="cred tilt paper-stack" data-tilt data-tilt-max="9">
+        <div class="cred__name">NewsAPI</div>
+        <p class="cred__desc">Current and archival coverage across mainstream news outlets.</p>
+      </div>
+      <div class="cred tilt paper-stack" data-tilt data-tilt-max="9">
+        <div class="cred__name">The Guardian Open Platform</div>
+        <p class="cred__desc">Full-text reporting and archives from The Guardian&rsquo;s own database.</p>
+      </div>
+      <div class="cred tilt paper-stack" data-tilt data-tilt-max="9">
+        <div class="cred__name">Wikipedia</div>
+        <p class="cred__desc">Community&#8209;maintained reference entries, used for background and consensus fact.</p>
+      </div>
     </div>
   </section>
 
@@ -516,10 +877,22 @@
 
   <section>
     <div class="stats">
-      <div class="stat"><div class="stat__num">92%</div><div class="stat__label">Classification accuracy on ISOT</div></div>
-      <div class="stat"><div class="stat__num">4</div><div class="stat__label">Independent sources cross&#8209;checked</div></div>
-      <div class="stat"><div class="stat__num">4</div><div class="stat__label">Stages, raw text to verdict</div></div>
-      <div class="stat"><div class="stat__num" id="liveCount">&mdash;</div><div class="stat__label">Claims checked on this desk</div></div>
+      <div class="stat tilt paper-stack" data-tilt data-tilt-max="11">
+        <div class="stat__num">92%</div>
+        <div class="stat__label">Classification accuracy on ISOT</div>
+      </div>
+      <div class="stat tilt paper-stack" data-tilt data-tilt-max="11">
+        <div class="stat__num">4</div>
+        <div class="stat__label">Independent sources cross&#8209;checked</div>
+      </div>
+      <div class="stat tilt paper-stack" data-tilt data-tilt-max="11">
+        <div class="stat__num">4</div>
+        <div class="stat__label">Stages, raw text to verdict</div>
+      </div>
+      <div class="stat tilt paper-stack" data-tilt data-tilt-max="11">
+        <div class="stat__num" id="liveCount">&mdash;</div>
+        <div class="stat__label">Claims checked on this desk</div>
+      </div>
     </div>
   </section>
 
@@ -536,148 +909,559 @@
         <a href="https://linkedin.com/in/ruturaj-jadhav11" target="_blank" rel="noopener">&rarr; LinkedIn</a>
       </div>
     </div>
+    <div class="legal-links">
+      <button type="button" data-legal="privacy">Privacy Policy</button>
+      <button type="button" data-legal="cookies">Cookie Policy</button>
+      <button type="button" data-legal="terms">Terms of Service</button>
+      <button type="button" id="cookieSettingsLink2">Cookie Settings</button>
+    </div>
   </footer>
 
 </div>
 
+<!-- ================= LEGAL READER OVERLAY ================= -->
+<div class="legal-overlay" id="legalOverlay" hidden>
+  <div class="legal-panel">
+    <div class="legal-panel__head">
+      <span class="eyebrow" id="legalPanelLabel">Legal</span>
+      <button class="legal-close" type="button" id="legalClose">&times; Close</button>
+    </div>
+
+    <div class="legal-doc" id="legal-privacy" hidden>
+      <span class="eyebrow">Legal &mdash; Privacy</span>
+      <h2>VeritAI Privacy Policy</h2>
+      <div class="legal-meta">Last updated: 16 September 2026</div>
+      <p>VeritAI (&ldquo;VeritAI&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is an AI-powered fact-verification tool built and operated by Ruturaj Jadhav. This Privacy Policy explains what information we collect when you use VeritAI (the &ldquo;Service&rdquo;), why we collect it, how we use and share it, and the rights you have over it.</p>
+      <p>By using the Service you agree to the collection and use of information in accordance with this Policy. If you do not agree, please do not use the Service.</p>
+
+      <h3>1. Information We Collect</h3>
+      <p>We follow a data-minimisation principle: we only collect what the Service actually needs to function.</p>
+      <p><strong>Content you submit.</strong> The text of the claim, headline, or article you paste into VeritAI, plus the claim(s) our pipeline extracts from it, the verdict, the confidence score, and the evidence snippets returned by our sources. This is stored so the tool can show you past results and power the aggregate statistics on the site (e.g. &ldquo;92% classification accuracy&rdquo;).</p>
+      <p><strong>Account information (preview feature).</strong> If you create an account, we ask only for a username and a password &mdash; no email address, phone number, or real name. As of this version, account creation on the public site is a front-end preview only; no account record is created on our servers. When real accounts go live, this Policy will be updated and passwords will always be stored as salted cryptographic hashes, never in plain text.</p>
+      <p><strong>Usage and log data.</strong> Standard technical data generated by any web request: timestamp, the endpoint called (e.g. <code>/analyse</code>, <code>/stats</code>), and processing time. Our hosting provider (Hugging Face Spaces) may also retain standard infrastructure logs (e.g. IP address, user agent) for security and abuse prevention, under its own privacy practices.</p>
+      <p><strong>Cookies and similar technologies.</strong> See our Cookie Policy for full detail on what we use and how you can control it.</p>
+      <p>We do <strong>not</strong> collect: your name, email address, physical address, payment information, government ID, precise location, or biometric data. We have no advertising integrations and do not build advertising profiles.</p>
+
+      <h3>2. How We Use Your Information</h3>
+      <ul>
+        <li>To run the claim-extraction, classification, and verification pipeline and return a verdict to you.</li>
+        <li>To display aggregate, non-identifying statistics about the Service.</li>
+        <li>To let you look back at a previous query via its result ID.</li>
+        <li>To maintain, secure, debug, and improve the Service.</li>
+        <li>To comply with legal obligations, where applicable.</li>
+      </ul>
+      <p>We do not use your submitted content to train new machine-learning models without separately telling you first, and we do not sell your data.</p>
+
+      <h3>3. How We Share Your Information</h3>
+      <p>VeritAI's verification pipeline works by cross-checking your claim against independent evidence sources. To do this, the extracted claim text (not your account details) is sent, as a search query, to: <strong>Google Fact Check Tools</strong>, <strong>NewsAPI</strong>, <strong>The Guardian Open Platform</strong>, and <strong>Wikipedia</strong>. Each is a separate, independent service with its own privacy practices.</p>
+      <p>We also use <strong>Hugging Face Spaces</strong> for application hosting and <strong>GitHub</strong> for source code hosting (GitHub does not receive your submitted content). We do not sell your personal information or share it with advertisers or data brokers. We may disclose information if required by law, to protect rights, safety, or property, or in connection with a merger or sale of assets (with notice to you).</p>
+
+      <h3>4. Data Retention</h3>
+      <p>We keep submitted claims, verdicts, and associated query records for as long as reasonably needed to operate the Service and its statistics feature, or until you request deletion. We are actively working toward a defined automatic retention window and a self-service deletion option; until then, you can request deletion at any time using the contact details below.</p>
+
+      <h3>5. Data Minimisation &mdash; &ldquo;No Unnecessary Data&rdquo;</h3>
+      <ul>
+        <li>No account is required to use the core fact-checking tool.</li>
+        <li>Where an account is offered, we ask only for a username and password &mdash; nothing else.</li>
+        <li>We do not request or store your name, email, phone number, location, or any government identifier.</li>
+        <li>We do not run third-party advertising trackers.</li>
+        <li>Analytics, if ever enabled, will be limited to aggregate, non-identifying usage counts and will require your cookie consent first.</li>
+      </ul>
+
+      <h3>6. Your Rights</h3>
+      <p>Depending on where you live, you may have the right to access, correct, delete, restrict or object to processing of, receive a portable copy of, and withdraw consent to the processing of your personal information. If you are in the UK or EEA, these rights arise under the UK/EU GDPR. If you are a California resident, similar rights apply under the CCPA/CPRA; we do not sell personal information, so there is nothing to opt out of in that respect. Contact us using the details in Section 9 to exercise any of these rights.</p>
+
+      <h3>7. Children's Privacy</h3>
+      <p>VeritAI is <strong>not directed at, and is not intended for use by, anyone under the age of 16</strong>. We do not knowingly collect personal information from children under 16. If you are a parent or guardian and believe your child has provided us with personal information, please contact us and we will delete it promptly.</p>
+
+      <h3>8. International Data Transfers</h3>
+      <p>VeritAI is operated from the United Kingdom. Our hosting provider and the third-party evidence sources listed in Section 3 may process data on servers located outside the UK or EEA, including in the United States. Where this occurs, we rely on the safeguards those providers offer to protect your information.</p>
+
+      <h3>9. Security</h3>
+      <p>We take reasonable technical and organisational measures to protect your information, including transport encryption (HTTPS) for all traffic to the Service. No method of transmission or storage is 100% secure, and we cannot guarantee absolute security.</p>
+
+      <h3>10. Changes to This Policy</h3>
+      <p>We may update this Policy from time to time. Material changes will be reflected by updating the &ldquo;Last updated&rdquo; date above, and, where appropriate, an on-site notice.</p>
+
+      <h3>11. Contact Us</h3>
+      <p>Ruturaj Jadhav &mdash; <a href="https://github.com/Ruturajjadhav35" target="_blank" rel="noopener">github.com/Ruturajjadhav35</a> &mdash; <a href="https://linkedin.com/in/ruturaj-jadhav11" target="_blank" rel="noopener">linkedin.com/in/ruturaj-jadhav11</a></p>
+    </div>
+
+    <div class="legal-doc" id="legal-cookies" hidden>
+      <span class="eyebrow">Legal &mdash; Cookies</span>
+      <h2>VeritAI Cookie Policy</h2>
+      <div class="legal-meta">Last updated: 16 September 2026</div>
+      <p>This Cookie Policy explains what cookies and similar technologies VeritAI uses, why, and how you can control them. It should be read alongside our Privacy Policy.</p>
+
+      <h3>1. What Are Cookies</h3>
+      <p>Cookies are small text files placed on your device when you visit a website. They let a site remember things between visits or page loads &mdash; such as a preference you set, or that you've already responded to a consent banner. &ldquo;Similar technologies&rdquo; here also covers <code>localStorage</code>, a comparable browser-storage mechanism we use in the same privacy-respecting way.</p>
+
+      <h3>2. Categories of Cookies We Use</h3>
+      <table>
+        <thead><tr><th>Category</th><th>Purpose</th><th>Examples on VeritAI</th><th>Active?</th></tr></thead>
+        <tbody>
+          <tr><td>Strictly necessary</td><td>Required for the site to function; cannot be switched off.</td><td>Remembering your cookie-consent choice; keeping the demo sign-in gate working within your session.</td><td>Yes</td></tr>
+          <tr><td>Functional</td><td>Remembers preferences to improve your experience, but the site works without them.</td><td>Remembering a theme choice, or that you skipped the sign-in gate.</td><td>Off by default</td></tr>
+          <tr><td>Analytics</td><td>Aggregate, non-identifying usage patterns.</td><td>No analytics cookies are in use today &mdash; this row exists so any future analytics stays off until you opt in.</td><td>Not currently used</td></tr>
+          <tr><td>Advertising</td><td>Showing or measuring ads.</td><td>VeritAI has no advertising and never will use this category.</td><td>Never used</td></tr>
+        </tbody>
+      </table>
+      <p>We do not use third-party advertising cookies, cross-site tracking pixels, or fingerprinting.</p>
+
+      <h3>3. Your Choices</h3>
+      <p>When you first visit VeritAI, a banner lets you Accept All, Reject Non-Essential, or Manage Preferences to choose category-by-category. Strictly necessary storage is always on, because the site cannot function without it. You can change your mind at any time using the Cookie Settings link in the site footer, or control/delete cookies and local storage directly through your browser's settings.</p>
+
+      <h3>4. Changes to This Policy</h3>
+      <p>We may update this Policy as the Service changes. The categories table above will always reflect what is actually active on the site, not just what is hypothetically possible.</p>
+
+      <h3>5. Contact Us</h3>
+      <p>Ruturaj Jadhav &mdash; <a href="https://github.com/Ruturajjadhav35" target="_blank" rel="noopener">github.com/Ruturajjadhav35</a> &mdash; <a href="https://linkedin.com/in/ruturaj-jadhav11" target="_blank" rel="noopener">linkedin.com/in/ruturaj-jadhav11</a></p>
+    </div>
+
+    <div class="legal-doc" id="legal-terms" hidden>
+      <span class="eyebrow">Legal &mdash; Terms</span>
+      <h2>VeritAI Terms of Service</h2>
+      <div class="legal-meta">Last updated: 16 September 2026</div>
+      <p>These Terms of Service (&ldquo;Terms&rdquo;) govern your use of VeritAI (the &ldquo;Service&rdquo;), an AI-assisted fact-verification tool built and operated by Ruturaj Jadhav (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;). By accessing or using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.</p>
+
+      <h3>1. Acceptance of Terms</h3>
+      <p>By creating an account, submitting content, or otherwise using VeritAI, you confirm that you have read, understood, and agree to these Terms and to our Privacy Policy and Cookie Policy.</p>
+
+      <h3>2. Description of the Service, and an Important Accuracy Disclaimer</h3>
+      <p>VeritAI extracts a checkable claim from text you submit, classifies it with a machine-learning model (BERT, fine-tuned on the ISOT dataset), retrieves evidence from third-party sources, and produces a verdict using a second model (RoBERTa fine-tuned on MNLI).</p>
+      <p><strong>VeritAI is an experimental, research-grade tool built as part of an MSc dissertation. Its outputs are probabilistic model predictions, not guarantees of truth.</strong> Verdicts can be incomplete, outdated, or wrong. You must not treat a VeritAI verdict as the sole basis for a factual, medical, legal, financial, electoral, or safety-related decision. Always use your own judgement and consult authoritative primary sources.</p>
+
+      <h3>3. Eligibility</h3>
+      <p>You must be at least <strong>16 years old</strong> to use the Service or create an account. By using VeritAI, you represent that you meet this requirement. If we learn that someone under 16 has provided us with personal information, we will delete it.</p>
+
+      <h3>4. Accounts</h3>
+      <p>Where account creation is offered, you are responsible for keeping your password confidential and for all activity under your account. As of this version, the sign-in/create-account flow is a front-end preview and does not create a server-side record; this will be clearly indicated on the Service, and these Terms will be updated when real accounts go live.</p>
+
+      <h3>5. Acceptable Use</h3>
+      <ul>
+        <li>Do not use the Service to generate, verify, or spread content for harassment, defamation, or targeted disinformation campaigns.</li>
+        <li>Do not submit content that is unlawful, infringes another person's rights, or contains another person's sensitive personal data without their consent.</li>
+        <li>Do not attempt to interfere with, overload, reverse-engineer, or gain unauthorised access to the Service or its underlying models.</li>
+        <li>Do not use automated means to query the Service at a volume that degrades it for other users, without our prior written permission.</li>
+        <li>Do not misrepresent VeritAI's output as an official, legal, or professional fact-check when presenting it to others.</li>
+      </ul>
+      <p>We may suspend or terminate access for anyone who violates these Terms.</p>
+
+      <h3>6. Intellectual Property</h3>
+      <p>The VeritAI name, branding, design, and underlying software are the property of Ruturaj Jadhav, except for open-source components used under their respective licences. You retain ownership of any text you submit; by submitting it, you grant us a limited licence to process it solely to provide the Service to you, as described in our Privacy Policy.</p>
+
+      <h3>7. Third-Party Services</h3>
+      <p>VeritAI relies on Google Fact Check Tools, NewsAPI, The Guardian Open Platform, Wikipedia, and Hugging Face Spaces to function. Your use of the Service is also subject to the availability and terms of these third parties, which we do not control and are not responsible for.</p>
+
+      <h3>8. Disclaimers of Warranties</h3>
+      <p>The Service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo;, without warranties of any kind, whether express, implied, or statutory, including implied warranties of merchantability, fitness for a particular purpose, accuracy, or non-infringement. We do not warrant that the Service will be uninterrupted, error-free, or that any verdict will be accurate.</p>
+
+      <h3>9. Limitation of Liability</h3>
+      <p>To the fullest extent permitted by law, VeritAI and its operator shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of data, profits, or goodwill, arising from your use of, or inability to use, the Service &mdash; including reliance on a verdict it produces. Nothing in these Terms limits liability that cannot lawfully be limited, such as liability for death or personal injury caused by negligence, or fraud.</p>
+
+      <h3>10. Indemnification</h3>
+      <p>You agree to indemnify and hold harmless VeritAI and its operator from any claim or demand, including reasonable legal fees, arising out of your misuse of the Service or your violation of these Terms.</p>
+
+      <h3>11. Termination</h3>
+      <p>We may suspend or terminate your access to the Service at any time, with or without cause, including for violation of these Terms. You may stop using the Service, and request deletion of your data, at any time.</p>
+
+      <h3>12. Governing Law and Disputes</h3>
+      <p>These Terms are governed by the laws of England and Wales, without regard to conflict-of-law principles. Any dispute arising from these Terms or the Service will be subject to the exclusive jurisdiction of the courts of England and Wales. This does not remove any statutory consumer-protection rights you may have in your own country of residence.</p>
+
+      <h3>13. Changes to These Terms</h3>
+      <p>We may update these Terms from time to time. Material changes will be reflected by updating the &ldquo;Last updated&rdquo; date above, and, where appropriate, an on-site notice. Continued use of the Service after changes take effect constitutes acceptance of the revised Terms.</p>
+
+      <h3>14. Contact Us</h3>
+      <p>Ruturaj Jadhav &mdash; <a href="https://github.com/Ruturajjadhav35" target="_blank" rel="noopener">github.com/Ruturajjadhav35</a> &mdash; <a href="https://linkedin.com/in/ruturaj-jadhav11" target="_blank" rel="noopener">linkedin.com/in/ruturaj-jadhav11</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= COOKIE CONSENT BANNER ================= -->
+<div class="cookie-banner" id="cookieBanner" hidden>
+  <div class="cookie-banner__inner">
+    <div class="cookie-banner__text">
+      <span class="eyebrow">A Note On Cookies</span>
+      <p>We use strictly necessary storage to run this preview, and nothing else unless you say so. See our <button type="button" data-legal="cookies" style="background:none;border:none;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer;">Cookie Policy</button> for the full breakdown.</p>
+    </div>
+    <div class="cookie-banner__actions">
+      <button class="btn" type="button" id="cookieReject">Reject Non&#8209;Essential</button>
+      <button class="btn" type="button" id="cookieManage">Manage Preferences</button>
+      <button class="btn btn--primary" type="button" id="cookieAccept">Accept All</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= COOKIE PREFERENCES MODAL ================= -->
+<div class="legal-overlay" id="prefsOverlay" hidden>
+  <div class="legal-panel prefs-panel">
+    <div class="legal-panel__head">
+      <span class="eyebrow">Cookie Preferences</span>
+      <button class="legal-close" type="button" id="prefsClose">&times; Close</button>
+    </div>
+    <div class="legal-doc">
+      <div class="pref-row">
+        <div>
+          <div class="pref-row__label">Strictly Necessary</div>
+          <div class="pref-row__desc">Required to run the site and remember this choice. Always on.</div>
+        </div>
+        <label class="switch"><input type="checkbox" checked disabled><span class="switch__track"><span class="switch__thumb"></span></span></label>
+      </div>
+      <div class="pref-row">
+        <div>
+          <div class="pref-row__label">Functional</div>
+          <div class="pref-row__desc">Remembers preferences like a theme choice or skipping the sign-in gate.</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="prefFunctional"><span class="switch__track"><span class="switch__thumb"></span></span></label>
+      </div>
+      <div class="pref-row">
+        <div>
+          <div class="pref-row__label">Analytics</div>
+          <div class="pref-row__desc">Aggregate, non-identifying usage counts. Not currently used on VeritAI &mdash; this only takes effect if we add it later.</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="prefAnalytics"><span class="switch__track"><span class="switch__thumb"></span></span></label>
+      </div>
+      <button class="btn btn--primary prefs-save" type="button" id="prefsSave">Save Preferences</button>
+    </div>
+  </div>
+</div>
+
 <script>
-(function(){
-  /* ---- wire tabs ---- */
-  var tabs = document.querySelectorAll('.wire-tab');
-  var panels = document.querySelectorAll('.wire-panel');
-  tabs.forEach(function(tab, i){
-    tab.addEventListener('click', function(){
-      tabs.forEach(function(t){ t.setAttribute('aria-selected','false'); });
-      panels.forEach(function(p){ p.removeAttribute('data-active'); });
-      tab.setAttribute('aria-selected','true');
-      panels[i].setAttribute('data-active','');
-    });
-  });
-
-  /* ---- live verification desk ---- */
-  var textarea   = document.getElementById('articleText');
-  var verifyBtn  = document.getElementById('verifyBtn');
-  var strip      = document.getElementById('pipelineStrip');
-  var errorBox   = document.getElementById('errorBox');
-  var verifyOut  = document.getElementById('verifyOut');
-  var resultEl   = document.getElementById('verifyResult');
-  var statTag    = document.getElementById('statTag');
-
-  var VERDICT_LABEL = { supports: 'True', refutes: 'False', nei: 'Unverified' };
-  var VERDICT_CLASS = { supports: 'stamp--true', refutes: 'stamp--false', nei: 'stamp--mixed' };
-  var SOURCE_LABEL  = { supports: 'Supports', refutes: 'Contradicts', nei: 'Neutral' };
-  var SOURCE_CLASS  = { supports: 'src-tag--supports', refutes: 'src-tag--contradicts', nei: 'src-tag--neutral' };
-
-  function esc(s){
-    return String(s).replace(/[&<>"']/g, function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-    });
-  }
-
-  function stampHTML(verdictKey, label){
-    var cls = VERDICT_CLASS[verdictKey] || 'stamp--mixed';
-    return '<span class="stamp ' + cls + '"><span class="stamp__dot"></span>' + esc(label) + '</span>';
-  }
-
-  function renderClaim(claim){
-    var label = VERDICT_LABEL[claim.verdict] || 'Unverified';
-    var rows = (claim.source_breakdown || []).map(function(s){
-      var scls = SOURCE_CLASS[s.verdict] || 'src-tag--neutral';
-      var slabel = SOURCE_LABEL[s.verdict] || 'Neutral';
-      return '<li><span class="src-name">' + esc(s.source) + '</span><span class="src-tag ' + scls + '">' + esc(slabel) + '</span></li>';
-    }).join('');
-    return (
-      '<div class="claim-block">' +
-        '<p style="font-family:var(--font-display); font-style:italic; font-weight:500; font-size:1.05rem; line-height:1.4;">&ldquo;' + esc(claim.text) + '&rdquo;</p>' +
-        '<div class="verdict-row" style="margin-top:.7rem;">' + stampHTML(claim.verdict, label) +
-          '<span class="confidence">confidence <b>' + claim.conf + '%</b></span></div>' +
-        (claim.evidence ? '<p style="margin-top:.7rem; font-size:.88rem; color:var(--ink-muted);">' + esc(claim.evidence) + '</p>' : '') +
-        (rows ? '<ul class="sources-list" style="margin-top:.9rem;">' + rows + '</ul>' : '') +
-      '</div>'
-    );
-  }
-
-  function renderResult(data){
-    var overallKey = data.verdict === 'fake' ? 'refutes' : (data.verdict === 'real' ? 'supports' : 'nei');
-    var overallLabel = data.verdict === 'fake' ? 'Likely Unreliable' : (data.verdict === 'real' ? 'Likely Reliable' : 'Unverified');
-    var claimsHTML = (data.claims || []).map(renderClaim).join('');
-    resultEl.innerHTML =
-      '<div class="verdict-row">' + stampHTML(overallKey, overallLabel) +
-        '<span class="confidence">confidence <b>' + data.confidence + '%</b></span></div>' +
-      '<p style="margin-top:.8rem; font-size:.82rem; font-family:var(--font-mono); color:var(--ink-muted);">' +
-        data.total_claims + ' claim' + (data.total_claims === 1 ? '' : 's') + ' checked &middot; ' +
-        data.conflict_pct + '% refuted &middot; ' + data.processing_ms + 'ms' +
-      '</p>' +
-      claimsHTML;
-    verifyOut.setAttribute('data-state', 'live');
-  }
-
-  function setStage(name, cls){
-    var el = strip.querySelector('[data-stage="' + name + '"]');
-    if (el) { el.classList.remove('on','done'); if (cls) el.classList.add(cls); }
-  }
-
-  async function runVerification(){
-    var text = textarea.value.trim();
-    errorBox.hidden = true;
-    if (text.length < 20){
-      errorBox.textContent = 'Article text is too short to analyse — at least 20 characters.';
-      errorBox.hidden = false;
-      return;
-    }
-
-    verifyBtn.disabled = true;
-    verifyBtn.textContent = 'Verifying…';
-    strip.hidden = false;
-    ['extract','screen','retrieve','verify'].forEach(function(s){ setStage(s, null); });
-    setStage('extract','on');
-
-    var tick = 0;
-    var stages = ['extract','screen','retrieve','verify'];
-    var interval = setInterval(function(){
-      setStage(stages[tick], 'done');
-      tick++;
-      if (tick < stages.length) setStage(stages[tick], 'on');
-    }, 900);
-
-    try{
-      var res = await fetch('/analyse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text })
+  (function(){
+    /* wire tabs */
+    var tabs = document.querySelectorAll('.wire-tab');
+    var panels = document.querySelectorAll('.wire-panel');
+    tabs.forEach(function(tab, i){
+      tab.addEventListener('click', function(){
+        tabs.forEach(function(t){ t.setAttribute('aria-selected','false'); });
+        panels.forEach(function(p){ p.removeAttribute('data-active'); });
+        tab.setAttribute('aria-selected','true');
+        panels[i].setAttribute('data-active','');
       });
-      if (!res.ok){
-        var err = await res.json().catch(function(){ return {}; });
-        throw new Error(err.detail || ('Request failed (' + res.status + ')'));
+    });
+
+    /* live verification desk — wired to the real /analyse and /stats routes */
+    var textarea   = document.getElementById('articleText');
+    var verifyBtn  = document.getElementById('verifyBtn');
+    var strip      = document.getElementById('pipelineStrip');
+    var errorBox   = document.getElementById('errorBox');
+    var verifyOut  = document.getElementById('verifyOut');
+    var resultEl   = document.getElementById('verifyResult');
+
+    var VERDICT_LABEL = { supports: 'True', refutes: 'False', nei: 'Unverified' };
+    var VERDICT_CLASS = { supports: 'stamp--true', refutes: 'stamp--false', nei: 'stamp--mixed' };
+    var SOURCE_LABEL  = { supports: 'Supports', refutes: 'Contradicts', nei: 'Neutral' };
+    var SOURCE_CLASS  = { supports: 'src-tag--supports', refutes: 'src-tag--contradicts', nei: 'src-tag--neutral' };
+
+    function esc(s){
+      return String(s).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+      });
+    }
+
+    function stampHTML(verdictKey, label){
+      var cls = VERDICT_CLASS[verdictKey] || 'stamp--mixed';
+      return '<span class="stamp ' + cls + '"><span class="stamp__dot"></span>' + esc(label) + '</span>';
+    }
+
+    function renderClaim(claim){
+      var label = VERDICT_LABEL[claim.verdict] || 'Unverified';
+      var rows = (claim.source_breakdown || []).map(function(s){
+        var scls = SOURCE_CLASS[s.verdict] || 'src-tag--neutral';
+        var slabel = SOURCE_LABEL[s.verdict] || 'Neutral';
+        return '<li><span class="src-name">' + esc(s.source) + '</span><span class="src-tag ' + scls + '">' + esc(slabel) + '</span></li>';
+      }).join('');
+      return (
+        '<div class="claim-block">' +
+          '<p style="font-family:var(--font-display); font-style:italic; font-weight:500; font-size:1.05rem; line-height:1.4;">&ldquo;' + esc(claim.text) + '&rdquo;</p>' +
+          '<div class="verdict-row" style="margin-top:.7rem;">' + stampHTML(claim.verdict, label) +
+            '<span class="confidence">confidence <b>' + claim.conf + '%</b></span></div>' +
+          (claim.evidence ? '<p style="margin-top:.7rem; font-size:.88rem; color:var(--ink-muted);">' + esc(claim.evidence) + '</p>' : '') +
+          (rows ? '<ul class="sources-list" style="margin-top:.9rem;">' + rows + '</ul>' : '') +
+        '</div>'
+      );
+    }
+
+    function renderResult(data){
+      var overallKey = data.verdict === 'fake' ? 'refutes' : (data.verdict === 'real' ? 'supports' : 'nei');
+      var overallLabel = data.verdict === 'fake' ? 'Likely Unreliable' : (data.verdict === 'real' ? 'Likely Reliable' : 'Unverified');
+      var claimsHTML = (data.claims || []).map(renderClaim).join('');
+      resultEl.innerHTML =
+        '<div class="verdict-row">' + stampHTML(overallKey, overallLabel) +
+          '<span class="confidence">confidence <b>' + data.confidence + '%</b></span></div>' +
+        '<p style="margin-top:.8rem; font-size:.82rem; font-family:var(--font-mono); color:var(--ink-muted);">' +
+          data.total_claims + ' claim' + (data.total_claims === 1 ? '' : 's') + ' checked &middot; ' +
+          data.conflict_pct + '% refuted &middot; ' + data.processing_ms + 'ms' +
+        '</p>' +
+        claimsHTML;
+      verifyOut.setAttribute('data-state', 'live');
+    }
+
+    function setStage(name, cls){
+      var el = strip.querySelector('[data-stage="' + name + '"]');
+      if (el) { el.classList.remove('on','done'); if (cls) el.classList.add(cls); }
+    }
+
+    async function runVerification(){
+      var text = textarea.value.trim();
+      errorBox.hidden = true;
+      if (text.length < 20){
+        errorBox.textContent = 'Article text is too short to analyse — at least 20 characters.';
+        errorBox.hidden = false;
+        return;
       }
-      var data = await res.json();
-      renderResult(data);
-    } catch(e){
-      errorBox.textContent = e.message || 'Something went wrong reaching the verification pipeline.';
-      errorBox.hidden = false;
-    } finally{
-      clearInterval(interval);
-      stages.forEach(function(s){ setStage(s, 'done'); });
-      verifyBtn.disabled = false;
-      verifyBtn.textContent = 'Send to verification →';
-      setTimeout(function(){ strip.hidden = true; }, 600);
-    }
-  }
 
-  verifyBtn.addEventListener('click', runVerification);
-  textarea.addEventListener('keydown', function(e){
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runVerification();
-  });
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = 'Verifying…';
+      strip.hidden = false;
+      ['extract','screen','retrieve','verify'].forEach(function(s){ setStage(s, null); });
+      setStage('extract','on');
 
-  /* ---- live desk counter (best-effort, fails silently) ---- */
-  fetch('/stats').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
-    if (d && d.summary && typeof d.summary.total_queries === 'number'){
-      document.getElementById('liveCount').textContent = d.summary.total_queries.toLocaleString();
-    } else {
-      document.getElementById('liveCount').textContent = '—';
+      var tick = 0;
+      var stages = ['extract','screen','retrieve','verify'];
+      var interval = setInterval(function(){
+        setStage(stages[tick], 'done');
+        tick++;
+        if (tick < stages.length) setStage(stages[tick], 'on');
+      }, 900);
+
+      try{
+        var res = await fetch('/analyse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text })
+        });
+        if (!res.ok){
+          var err = await res.json().catch(function(){ return {}; });
+          throw new Error(err.detail || ('Request failed (' + res.status + ')'));
+        }
+        var data = await res.json();
+        renderResult(data);
+      } catch(e){
+        errorBox.textContent = e.message || 'Something went wrong reaching the verification pipeline.';
+        errorBox.hidden = false;
+      } finally{
+        clearInterval(interval);
+        stages.forEach(function(s){ setStage(s, 'done'); });
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Send to verification →';
+        setTimeout(function(){ strip.hidden = true; }, 600);
+      }
     }
-  }).catch(function(){ document.getElementById('liveCount').textContent = '—'; });
-})();
+
+    verifyBtn.addEventListener('click', runVerification);
+    textarea.addEventListener('keydown', function(e){
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') runVerification();
+    });
+
+    /* "Run a claim like this" — fills the desk with a sample claim rather than linking offsite */
+    document.querySelectorAll('[data-try-claim]').forEach(function(el){
+      el.addEventListener('click', function(){
+        textarea.value = el.getAttribute('data-try-claim');
+        textarea.focus();
+        document.querySelector('.desk-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+
+    /* live desk counter (best-effort, fails silently) */
+    fetch('/stats').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      var el = document.getElementById('liveCount');
+      if (!el) return;
+      if (d && d.summary && typeof d.summary.total_queries === 'number'){
+        el.textContent = d.summary.total_queries.toLocaleString();
+      } else {
+        el.textContent = '—';
+      }
+    }).catch(function(){ var el = document.getElementById('liveCount'); if (el) el.textContent = '—'; });
+
+    /* reader gate — sign in / create account, demo only (no backend yet) */
+    var gateWrap    = document.getElementById('gateWrap');
+    var siteWrap    = document.getElementById('siteWrap');
+    var gtabIn      = document.getElementById('gtab-in');
+    var gtabUp      = document.getElementById('gtab-up');
+    var confirmField= document.getElementById('confirmField');
+    var confirmInput= document.getElementById('gateConfirm');
+    var ageField    = document.getElementById('ageField');
+    var ageInput    = document.getElementById('gateAge');
+    var passwordLbl = document.getElementById('passwordLabel');
+    var gateSubmit  = document.getElementById('gateSubmit');
+    var gateForm    = document.getElementById('gateForm');
+    var gateError   = document.getElementById('gateError');
+    var gateSkip    = document.getElementById('gateSkip');
+    var gateMode    = 'in';
+
+    function setGateMode(mode){
+      gateMode = mode;
+      gtabIn.setAttribute('aria-selected', mode === 'in' ? 'true' : 'false');
+      gtabUp.setAttribute('aria-selected', mode === 'up' ? 'true' : 'false');
+      confirmField.hidden = mode !== 'up';
+      confirmInput.required = mode === 'up';
+      ageField.hidden = mode !== 'up';
+      if (mode !== 'up') ageInput.checked = false;
+      passwordLbl.textContent = mode === 'up' ? 'Create a password' : 'Password';
+      gateSubmit.textContent = mode === 'up' ? 'Create account & enter →' : 'Enter the Desk →';
+      gateError.hidden = true;
+    }
+    if (gtabIn && gtabUp){
+      gtabIn.addEventListener('click', function(){ setGateMode('in'); });
+      gtabUp.addEventListener('click', function(){ setGateMode('up'); });
+    }
+
+    function showGateError(msg){ gateError.textContent = msg; gateError.hidden = false; }
+
+    function enterSite(username){
+      if (gateWrap) gateWrap.hidden = true;
+      if (siteWrap){
+        siteWrap.hidden = false;
+        if (username){
+          var dateline = siteWrap.querySelector('.masthead__dateline');
+          if (dateline) dateline.textContent = 'Signed in as ' + username + ' — London, UK';
+        }
+      }
+      window.scrollTo(0, 0);
+    }
+
+    if (gateForm){
+      gateForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        var username = document.getElementById('gateUsername').value.trim();
+        var password = document.getElementById('gatePassword').value;
+        if (username.length < 2){ showGateError('Enter a username, at least 2 characters.'); return; }
+        if (password.length < 6){ showGateError('Password needs at least 6 characters.'); return; }
+        if (gateMode === 'up' && password !== confirmInput.value){ showGateError('Passwords don’t match.'); return; }
+        if (gateMode === 'up' && !ageInput.checked){ showGateError('Please confirm you are 16 or older and agree to the Terms and Privacy Policy.'); return; }
+        enterSite(username);
+      });
+    }
+    if (gateSkip){
+      gateSkip.addEventListener('click', function(){ enterSite(null); });
+    }
+
+    /* legal reader — Privacy / Cookie / Terms, opened from any "data-legal" trigger */
+    var legalOverlay = document.getElementById('legalOverlay');
+    var legalClose    = document.getElementById('legalClose');
+    var legalDocs     = { privacy: document.getElementById('legal-privacy'), cookies: document.getElementById('legal-cookies'), terms: document.getElementById('legal-terms') };
+    var legalLabels    = { privacy: 'Legal — Privacy Policy', cookies: 'Legal — Cookie Policy', terms: 'Legal — Terms of Service' };
+    var legalPanelLabel = document.getElementById('legalPanelLabel');
+
+    function openLegal(which){
+      if (!legalDocs[which] || !legalOverlay) return;
+      Object.keys(legalDocs).forEach(function(k){ legalDocs[k].hidden = (k !== which); });
+      legalPanelLabel.textContent = legalLabels[which] || 'Legal';
+      legalOverlay.hidden = false;
+      legalOverlay.scrollTop = 0;
+    }
+    function closeLegal(){ if (legalOverlay) legalOverlay.hidden = true; }
+
+    document.querySelectorAll('[data-legal]').forEach(function(el){
+      el.addEventListener('click', function(){ openLegal(el.getAttribute('data-legal')); });
+    });
+    if (legalClose) legalClose.addEventListener('click', closeLegal);
+    if (legalOverlay) legalOverlay.addEventListener('click', function(e){ if (e.target === legalOverlay) closeLegal(); });
+    document.addEventListener('keydown', function(e){
+      if (e.key !== 'Escape') return;
+      if (legalOverlay && !legalOverlay.hidden) closeLegal();
+      if (prefsOverlay && !prefsOverlay.hidden) closePrefs();
+    });
+
+    /* cookie consent — banner + preferences, stored locally per browser */
+    var COOKIE_KEY = 'veritai_cookie_consent';
+    var cookieBanner  = document.getElementById('cookieBanner');
+    var cookieAccept  = document.getElementById('cookieAccept');
+    var cookieReject  = document.getElementById('cookieReject');
+    var cookieManage  = document.getElementById('cookieManage');
+    var prefsOverlay  = document.getElementById('prefsOverlay');
+    var prefsClose    = document.getElementById('prefsClose');
+    var prefsSave     = document.getElementById('prefsSave');
+    var prefFunctional= document.getElementById('prefFunctional');
+    var prefAnalytics = document.getElementById('prefAnalytics');
+    var cookieSettingsLinks = [document.getElementById('cookieSettingsLink1'), document.getElementById('cookieSettingsLink2')];
+
+    function readConsent(){
+      try {
+        var raw = window.localStorage.getItem(COOKIE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (err) { return null; }
+    }
+    function writeConsent(consent){
+      try { window.localStorage.setItem(COOKIE_KEY, JSON.stringify(consent)); } catch (err) { /* storage unavailable — banner will just reappear next visit */ }
+    }
+    function openPrefs(){
+      var existing = readConsent();
+      if (prefFunctional) prefFunctional.checked = !!(existing && existing.functional);
+      if (prefAnalytics) prefAnalytics.checked = !!(existing && existing.analytics);
+      if (prefsOverlay) prefsOverlay.hidden = false;
+    }
+    function closePrefs(){ if (prefsOverlay) prefsOverlay.hidden = true; }
+
+    (function initBanner(){
+      if (!cookieBanner) return;
+      var existing = readConsent();
+      if (!existing) cookieBanner.hidden = false;
+    })();
+
+    if (cookieAccept) cookieAccept.addEventListener('click', function(){
+      writeConsent({ necessary:true, functional:true, analytics:true, ts: Date.now() });
+      cookieBanner.hidden = true;
+    });
+    if (cookieReject) cookieReject.addEventListener('click', function(){
+      writeConsent({ necessary:true, functional:false, analytics:false, ts: Date.now() });
+      cookieBanner.hidden = true;
+    });
+    if (cookieManage) cookieManage.addEventListener('click', openPrefs);
+    cookieSettingsLinks.forEach(function(el){ if (el) el.addEventListener('click', openPrefs); });
+    if (prefsClose) prefsClose.addEventListener('click', closePrefs);
+    if (prefsOverlay) prefsOverlay.addEventListener('click', function(e){ if (e.target === prefsOverlay) closePrefs(); });
+    if (prefsSave) prefsSave.addEventListener('click', function(){
+      writeConsent({
+        necessary: true,
+        functional: !!(prefFunctional && prefFunctional.checked),
+        analytics: !!(prefAnalytics && prefAnalytics.checked),
+        ts: Date.now()
+      });
+      closePrefs();
+      if (cookieBanner) cookieBanner.hidden = true;
+    });
+
+    /* pointer-tracked 3D tilt — "paper lifted off the desk" */
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return;
+
+    document.querySelectorAll('[data-tilt]').forEach(function(el){
+      var max = parseFloat(el.dataset.tiltMax || '8');
+      el.addEventListener('pointermove', function(e){
+        if (e.pointerType === 'touch') return;
+        var r = el.getBoundingClientRect();
+        var px = (e.clientX - r.left) / r.width;   /* 0..1 */
+        var py = (e.clientY - r.top) / r.height;   /* 0..1 */
+        var ry = (px - 0.5) * max * 2;
+        var rx = (0.5 - py) * max * 2;
+        el.style.setProperty('--rx', rx.toFixed(2) + 'deg');
+        el.style.setProperty('--ry', ry.toFixed(2) + 'deg');
+        el.style.setProperty('--tz', '18px');
+        el.classList.add('is-active');
+      });
+      el.addEventListener('pointerleave', function(){
+        el.style.setProperty('--rx', '0deg');
+        el.style.setProperty('--ry', '0deg');
+        el.style.setProperty('--tz', '0px');
+        el.classList.remove('is-active');
+      });
+    });
+
+    /* subtle scroll parallax on the paper grain */
+    var grain = document.body;
+    var ticking = false;
+    window.addEventListener('scroll', function(){
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function(){
+        var y = window.scrollY * 0.04;
+        document.documentElement.style.setProperty('--grain-shift', y.toFixed(1) + 'px');
+        ticking = false;
+      });
+    }, { passive:true });
+  })();
 </script>
 </body>
 </html>
