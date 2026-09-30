@@ -1,6 +1,6 @@
 ---
-title: VeritAI
-emoji: 🔍
+Title: VeritAI
+
 colorFrom: red
 colorTo: yellow
 sdk: docker
