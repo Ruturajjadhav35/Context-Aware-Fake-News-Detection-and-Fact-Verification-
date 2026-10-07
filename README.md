@@ -2,12 +2,12 @@
 Title: VeritAI
 
 colorFrom: red
-colorTo: yellow
+ColorTo: yellow
 sdk: docker
 pinned: true
 license: mit
 app_port: 7860
-short_description: AI-powered fake news detection and fact verification
+Short_description: AI-powered fake news detection and fact verification
 tags:
   - nlp
   - bert
