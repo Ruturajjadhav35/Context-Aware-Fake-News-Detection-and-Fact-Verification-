@@ -1,8 +1,8 @@
 ---
 Title: VeritAI
 
-colorFrom: red
-ColorTo: yellow
+colorFrom: Red
+ColorTo: Yellow
 sdk: docker
 pinned: true
 license: mit
